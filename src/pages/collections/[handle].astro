@@ -1,0 +1,149 @@
+---
+// ============================================================
+//  Collection PLP — a single department rendered through the same
+//  shared ShopExplorer used by /products, so the filter / sort /
+//  density experience is identical. Section tabs are derived from
+//  the collection's product types; all facets are client-side.
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import ShopExplorer from '~/components/shop/ShopExplorer.astro';
+import Button from '~/components/ui/Button.astro';
+import { SITE } from '~/config/site';
+import { getCollection } from '~/lib/shopify';
+import type { CollectionWithProducts, ProductCard } from '~/lib/shopify/types';
+
+export const prerender = false;
+
+const { handle } = Astro.params;
+const url = Astro.url;
+// Optional in-collection text search (from the header category search).
+const q = url.searchParams.get('q')?.trim() ?? '';
+
+let collection: CollectionWithProducts | null = null;
+let loadFailed = false;
+
+// Load the whole collection (these are small) plus a newest-first pass so the
+// control deck can power NEW flags and the "Newest" sort. Client-side filtering
+// replaces cursor pagination, matching the /products experience.
+const [colRes, newRes] = await Promise.allSettled([
+  getCollection({ handle: handle!, pageSize: 100 }),
+  getCollection({ handle: handle!, pageSize: 100, sortKey: 'CREATED', reverse: true }),
+]);
+
+if (colRes.status === 'fulfilled') {
+  collection = colRes.value;
+} else {
+  loadFailed = true;
+  console.error('[collection] load failed:', colRes.reason?.message);
+}
+
+// 404 only for a genuinely missing collection; transient errors → 503.
+if (loadFailed) {
+  Astro.response.status = 503;
+} else if (!collection) {
+  Astro.response.status = 404;
+}
+
+let items: ProductCard[] = collection?.products.items ?? [];
+if (q) {
+  const ql = q.toLowerCase();
+  items = items.filter(
+    (p) =>
+      p.title.toLowerCase().includes(ql) ||
+      (p.vendor ?? '').toLowerCase().includes(ql) ||
+      (p.productType ?? '').toLowerCase().includes(ql),
+  );
+}
+
+// productId → recency rank for NEW flags + "Newest" sort
+const newRank = new Map<string, number>();
+if (newRes.status === 'fulfilled' && newRes.value) {
+  newRes.value.products.items.forEach((p, i) => newRank.set(p.id, i));
+}
+
+// Section tabs derived from product types (only worth showing with 2+ types).
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const typeOrder: string[] = [];
+for (const p of items) {
+  const t = (p.productType ?? '').trim();
+  if (t && !typeOrder.includes(t)) typeOrder.push(t);
+}
+const sections = typeOrder.length > 1
+  ? typeOrder.map((t) => ({ key: slug(t), label: t }))
+  : [];
+const catKeysOf = (p: ProductCard) => {
+  const t = (p.productType ?? '').trim();
+  return t ? [slug(t)] : [];
+};
+
+const brands = [...new Set(items.map((p) => (p.vendor ?? '').trim()).filter(Boolean))];
+
+const stats = [
+  { value: items.length.toLocaleString('en-US'), label: 'Products' },
+  { value: String(brands.length), label: 'Brands' },
+  { value: String(typeOrder.length || 1), label: 'Categories' },
+  { value: 'Daily', label: 'Restocks' },
+];
+
+const popular = items
+  .filter((p) => p.featuredImage)
+  .slice(0, 12)
+  .map((p) => ({ label: p.title, url: `/products/${p.handle}`, img: p.featuredImage!.url }));
+
+const title = collection?.title ?? '';
+const deck = q
+  ? `${items.length} result${items.length === 1 ? '' : 's'} for “${q}” in ${title}.`
+  : (collection?.description?.trim()
+      || `Everything in ${title}, hand-tested and spec-checked. Use the control deck below to cut straight to what you're after.`);
+---
+
+{
+  collection ? (
+    <BaseLayout
+      title={collection.seo?.title ?? collection.title}
+      description={
+        collection.seo?.description ||
+        collection.description ||
+        `Shop ${collection.title} at ${SITE.name} — curated tech, honest verdicts and serious deals.`
+      }
+    >
+      <ShopExplorer
+        products={items}
+        sections={sections}
+        catKeysOf={catKeysOf}
+        newRank={newRank}
+        kicker={q ? 'Search · Department' : 'Department'}
+        titleLead="SHOP"
+        titleEm={`${title}.`}
+        deck={deck}
+        stats={stats}
+        popular={popular}
+        emptyTitle="Nothing matches"
+        emptyBody="No products match these filters. Try clearing a filter or two."
+      >
+        <div slot="breadcrumb" class="shop-crumb">
+          <div class="container shop-crumb-inner">
+            <a href="/">Home</a>
+            <span class="sep">/</span>
+            <a href="/collections">Departments</a>
+            <span class="sep">/</span>
+            <span class="cur">{collection.title}</span>
+          </div>
+        </div>
+      </ShopExplorer>
+    </BaseLayout>
+  ) : (
+    <BaseLayout title={loadFailed ? 'Something went wrong' : 'Department not found'}>
+      <div class="wrap empty-state">
+        <p class="eyebrow kicker">{loadFailed ? 'Error 503' : 'Error 404'}</p>
+        <h2 class="masthead">{loadFailed ? 'Something went wrong' : 'Department not found'}</h2>
+        <p>
+          {loadFailed
+            ? "We couldn't load this department right now. Please try again shortly."
+            : "We couldn't find that department."}
+        </p>
+        <Button href="/collections" variant="news">All departments</Button>
+      </div>
+    </BaseLayout>
+  )
+}

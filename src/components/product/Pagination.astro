@@ -1,0 +1,41 @@
+---
+// Cursor-based Prev / Next pagination (SSR, no JS). Disabled edges
+// render as non-interactive spans (no keyboard focus / no #).
+import Icon from '~/components/ui/Icon.astro';
+
+interface Props {
+  prevUrl: string | null;
+  nextUrl: string | null;
+}
+const { prevUrl, nextUrl } = Astro.props;
+---
+
+{
+  (prevUrl || nextUrl) && (
+    <nav class="pagination" aria-label="Pagination">
+      {prevUrl ? (
+        <a href={prevUrl} class="pagination__btn" rel="prev">
+          <Icon name="chevronLeft" size={16} />
+          Previous
+        </a>
+      ) : (
+        <span class="pagination__btn is-disabled" aria-disabled="true">
+          <Icon name="chevronLeft" size={16} />
+          Previous
+        </span>
+      )}
+
+      {nextUrl ? (
+        <a href={nextUrl} class="pagination__btn" rel="next">
+          Next
+          <Icon name="chevronRight" size={16} />
+        </a>
+      ) : (
+        <span class="pagination__btn is-disabled" aria-disabled="true">
+          Next
+          <Icon name="chevronRight" size={16} />
+        </span>
+      )}
+    </nav>
+  )
+}

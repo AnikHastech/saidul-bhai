@@ -1,0 +1,23 @@
+---
+// A titled product section (SectionHeading + grid). Used for
+// best sellers, new arrivals, etc.
+import SectionHeading from '~/components/ui/SectionHeading.astro';
+import ProductGrid from '~/components/product/ProductGrid.astro';
+import type { ProductCard } from '~/lib/shopify/types';
+
+interface Props {
+  eyebrow?: string;
+  title: string;
+  href?: string;
+  products: ProductCard[];
+  mist?: boolean;
+}
+const { eyebrow, title, href, products, mist = false } = Astro.props;
+---
+
+<section class:list={['home-section', mist && 'home-section--mist']}>
+  <div class="wrap">
+    <SectionHeading eyebrow={eyebrow} title={title} href={href} class="home-section__head" />
+    <ProductGrid products={products} />
+  </div>
+</section>

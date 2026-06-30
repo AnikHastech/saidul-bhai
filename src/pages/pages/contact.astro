@@ -1,0 +1,307 @@
+---
+// ============================================================
+//  Contact — pixel-faithful port of magazine-style-html/contact-magazine.html
+//  (breadcrumb · hero · split card with info panel + message form ·
+//  direct channels · map band · FAQ). Visual design is 100% identical
+//  to the mockup; page chrome (header/footer + sitewide Instagram band)
+//  comes from the shared BaseLayout. The contact form keeps the original's
+//  client-side validate → success behaviour (no backend in the mockup).
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+
+export const prerender = false;
+---
+
+<BaseLayout title="Contact" description="Questions, press, partnerships or a problem with an order — write to us and a real person replies, usually within two hours.">
+  <div class="ct">
+
+    <!-- breadcrumb -->
+    <nav class="ct-crumb" aria-label="Breadcrumb">
+      <div class="ct-crumb-inner">
+        <a href="/">Home</a><span class="ct-crumb-sep">/</span>
+        <span class="ct-crumb-cur">Contact</span>
+      </div>
+    </nav>
+
+    <!-- hero -->
+    <section class="ct-hero">
+      <div class="ct-container">
+        <span class="ct-hero-kicker"><span class="ping"></span> The Letters Desk · Issue 247</span>
+        <h1>LET'S <em>TALK.</em></h1>
+        <p>Questions, press, partnerships or a problem with an order — write to us and a <b>real person</b> replies, usually within two hours.</p>
+      </div>
+    </section>
+
+    <!-- split card -->
+    <div class="ct-container ct-card-wrap">
+      <div class="ct-card">
+
+        <!-- left info panel -->
+        <div class="ct-panel">
+          <span class="ct-panel-k">Why write to us</span>
+          <h2>We're<br>listening.</h2>
+          <p>No bots, no ticket-number limbo. Real people who actually use the gear — here to help you choose, fix or follow up.</p>
+
+          <ul class="ct-promises">
+            <li class="ct-promise">
+              <span class="ct-promise-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg></span>
+              <div><b>Replies in under 2 hours</b><span>During opening times, 7 days a week</span></div>
+            </li>
+            <li class="ct-promise">
+              <span class="ct-promise-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="9" r="3.2"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0" stroke-linecap="round"/></svg></span>
+              <div><b>Always a real human</b><span>Specialists, not scripts</span></div>
+            </li>
+            <li class="ct-promise">
+              <span class="ct-promise-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke-linejoin="round"/></svg></span>
+              <div><b>Live chat, 24/7</b><span>Instant answers any time</span></div>
+            </li>
+          </ul>
+
+          <div class="ct-panel-contacts">
+            <a class="ct-panel-contact" href="mailto:hello@asmaz.com">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <div><span>Email</span><b>hello@asmaz.com</b></div>
+            </a>
+            <a class="ct-panel-contact" href="tel:+18005550147">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" stroke-linejoin="round"/></svg>
+              <div><span>Call</span><b>+1 (800) 555-0147</b></div>
+            </a>
+            <div class="ct-panel-socials">
+              <a href="#" class="ct-panel-social" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
+              <a href="#" class="ct-panel-social" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 4h3l-7 8 8 11h-6l-5-7-6 7H2l8-9L2 4h6l4 6 6-6Z"/></svg></a>
+              <a href="#" class="ct-panel-social" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="6" width="20" height="13" rx="3"/><path d="m10 10 5 2.5L10 15v-5Z" fill="currentColor"/></svg></a>
+              <a href="#" class="ct-panel-social" aria-label="TikTok"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 3c.3 2.3 1.8 4 4 4.2V10c-1.5 0-2.9-.5-4-1.3V15a6 6 0 1 1-6-6c.3 0 .7 0 1 .1v2.9a3 3 0 1 0 2 2.8V3h3z"/></svg></a>
+            </div>
+          </div>
+        </div>
+
+        <!-- right form -->
+        <div class="ct-form-side">
+          <div id="ctFormBody">
+            <div class="ct-form-head">
+              <h3>Send a message</h3>
+              <p>Pick a topic and fill in the form — required fields are marked.</p>
+            </div>
+
+            <div class="ct-pills" id="ctPills">
+              <button type="button" class="ct-pill is-active" data-topic="General enquiry">General</button>
+              <button type="button" class="ct-pill" data-topic="Order &amp; delivery">Order &amp; delivery</button>
+              <button type="button" class="ct-pill" data-topic="Returns &amp; warranty">Returns</button>
+              <button type="button" class="ct-pill" data-topic="Product advice">Product advice</button>
+              <button type="button" class="ct-pill" data-topic="Press">Press</button>
+              <button type="button" class="ct-pill" data-topic="Partnerships">Partnerships</button>
+            </div>
+
+            <form id="ctForm" novalidate onsubmit="ctSubmit(event)">
+              <input type="hidden" id="ctTopic" value="General enquiry">
+              <div class="ct-grid ct-row-2">
+                <div class="ct-field">
+                  <label class="ct-label" for="ctName">Full name</label>
+                  <input class="ct-input" type="text" id="ctName" placeholder="Your name" autocomplete="name" required>
+                </div>
+                <div class="ct-field">
+                  <label class="ct-label" for="ctEmail">Email address</label>
+                  <input class="ct-input" type="email" id="ctEmail" placeholder="you@email.com" autocomplete="email" required>
+                </div>
+                <div class="ct-field">
+                  <label class="ct-label" for="ctPhone">Phone <em>(optional)</em></label>
+                  <input class="ct-input" type="tel" id="ctPhone" placeholder="+1 (___) ___-____" autocomplete="tel">
+                </div>
+                <div class="ct-field">
+                  <label class="ct-label" for="ctOrder">Order number <em>(optional)</em></label>
+                  <input class="ct-input" type="text" id="ctOrder" placeholder="#OMX-______">
+                </div>
+                <div class="ct-field span2">
+                  <label class="ct-label" for="ctSubject">Subject</label>
+                  <input class="ct-input" type="text" id="ctSubject" placeholder="A short summary" required>
+                </div>
+                <div class="ct-field span2">
+                  <label class="ct-label" for="ctMessage">Message</label>
+                  <textarea class="ct-textarea" id="ctMessage" placeholder="Tell us what's on your mind — the more detail, the faster we can help." required></textarea>
+                </div>
+                <div class="ct-field span2">
+                  <label class="ct-check">
+                    <input type="checkbox" id="ctConsent" required>
+                    <span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    <span>I agree to asmaz storing my details to respond to this enquiry, per the <a href="#">privacy policy</a>.</span>
+                  </label>
+                </div>
+                <div class="ct-field span2">
+                  <button class="ct-submit" type="submit">Send message <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" stroke-linejoin="round"/></svg></button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div class="ct-success" id="ctSuccess">
+            <div class="ct-success-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <h3>Message sent</h3>
+            <p>Thanks, <b id="ctSuccessName">friend</b> — your message just landed on our desk. We'll reply to <b id="ctSuccessEmail">your inbox</b> within 2 hours.</p>
+            <button class="ct-submit" type="button" style="max-width:240px;margin:0 auto;background:var(--news-black);" onclick="ctReset()">Send another</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- direct channels -->
+    <section class="ct-channels">
+      <div class="ct-container">
+        <div class="ct-ch-head">
+          <span class="ct-ch-kicker">Direct Channels</span>
+          <h2>Reach the right team</h2>
+          <p>Every enquiry is routed to a dedicated specialist — choose the department that fits and skip the queue.</p>
+        </div>
+        <div class="ct-ch-grid">
+
+          <div class="ct-ch-card">
+            <span class="ct-ch-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 7h12l1 13H5L6 7z" stroke-linejoin="round"/><path d="M9 7a3 3 0 0 1 6 0" stroke-linecap="round"/></svg></span>
+            <h3>Sales &amp; Orders</h3>
+            <p>Pre-purchase advice, availability, and order tracking from our product team.</p>
+            <a class="ct-ch-link" href="mailto:sales@asmaz.com">sales@asmaz.com <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+          </div>
+
+          <div class="ct-ch-card">
+            <span class="ct-ch-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .9-1 1.7M12 16.5h.01" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <h3>Technical Support</h3>
+            <p>Setup, troubleshooting, warranty claims and repairs handled by experts.</p>
+            <a class="ct-ch-link" href="mailto:support@asmaz.com">support@asmaz.com <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+          </div>
+
+          <div class="ct-ch-card">
+            <span class="ct-ch-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" stroke-linejoin="round"/></svg></span>
+            <h3>Press &amp; Media</h3>
+            <p>Media kits, interviews, partnership and brand collaboration requests.</p>
+            <a class="ct-ch-link" href="mailto:press@asmaz.com">press@asmaz.com <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+          </div>
+
+          <div class="ct-ch-card">
+            <span class="ct-ch-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4" stroke-linecap="round"/></svg></span>
+            <h3>Business &amp; Concierge</h3>
+            <p>Corporate orders, bespoke gifting and white-glove personal shopping.</p>
+            <a class="ct-ch-link" href="mailto:concierge@asmaz.com">concierge@asmaz.com <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- map -->
+    <section class="ct-map-section">
+      <div class="ct-container">
+        <div class="ct-map-head">
+          <div>
+            <span class="k">Visit us</span>
+            <h2>THE asmaz <em>FLAGSHIP.</em></h2>
+          </div>
+        </div>
+        <div class="ct-map-frame">
+          <iframe title="Map to asmaz SoHo" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+            src="https://www.google.com/maps?q=137%20Mercer%20Street%2C%20New%20York%2C%20NY%2010012&output=embed"></iframe>
+          <div class="ct-map-info">
+            <h3>asmaz SoHo</h3>
+            <p class="addr">137 Mercer Street<br>New York, NY 10012</p>
+            <div class="ct-map-hours">
+              <div class="ct-map-hours-row"><span>Mon – Fri</span><b>9:00 — 20:00</b></div>
+              <div class="ct-map-hours-row"><span>Sat – Sun</span><b>10:00 — 18:00</b></div>
+              <div class="ct-map-hours-row"><span class="open">Open now</span><b>Closes 20:00</b></div>
+            </div>
+            <a class="ct-map-dir" href="https://www.google.com/maps/dir/?api=1&amp;destination=137%20Mercer%20Street%2C%20New%20York%2C%20NY%2010012" target="_blank" rel="noopener">Get directions <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="ct-faq">
+      <div class="ct-container">
+        <div class="ct-faq-head">
+          <span class="k">Before you write</span>
+          <h2>QUICK <em>ANSWERS.</em></h2>
+        </div>
+        <div class="ct-faq-list">
+          <div class="ct-faq-item open">
+            <button class="ct-faq-q" type="button" onclick="ctFaq(this)"><span class="qno">01</span><span class="qt">How fast will I get a reply?</span><span class="pm"></span></button>
+            <div class="ct-faq-a"><div class="ct-faq-a-inner">During opening hours we reply to emails and form messages within 2 hours on average. Live chat is instant, 24/7. Outside hours, expect a reply first thing next morning.</div></div>
+          </div>
+          <div class="ct-faq-item">
+            <button class="ct-faq-q" type="button" onclick="ctFaq(this)"><span class="qno">02</span><span class="qt">Where's my order?</span><span class="pm"></span></button>
+            <div class="ct-faq-a"><div class="ct-faq-a-inner">You'll get a tracking link by email the moment your order ships. You can also find live status under <a href="#">My Orders</a> in your account. Stuck? Drop your order number in the form above.</div></div>
+          </div>
+          <div class="ct-faq-item">
+            <button class="ct-faq-q" type="button" onclick="ctFaq(this)"><span class="qno">03</span><span class="qt">What's your returns policy?</span><span class="pm"></span></button>
+            <div class="ct-faq-a"><div class="ct-faq-a-inner">30 days, free returns, no questions asked — as long as it's in resellable condition. Start a return from your account and we'll email a prepaid label.</div></div>
+          </div>
+          <div class="ct-faq-item">
+            <button class="ct-faq-q" type="button" onclick="ctFaq(this)"><span class="qno">04</span><span class="qt">Do you ship internationally?</span><span class="pm"></span></button>
+            <div class="ct-faq-a"><div class="ct-faq-a-inner">Yes — we ship to 60+ countries. Duties and taxes are calculated at checkout so there are no surprises at your door. Delivery times vary by region.</div></div>
+          </div>
+          <div class="ct-faq-item">
+            <button class="ct-faq-q" type="button" onclick="ctFaq(this)"><span class="qno">05</span><span class="qt">I'm a creator / press — who do I talk to?</span><span class="pm"></span></button>
+            <div class="ct-faq-a"><div class="ct-faq-a-inner">Pick "Press" or "Partnerships" above, or email <a href="mailto:press@asmaz.com">press@asmaz.com</a> directly. We love a good collaboration.</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</BaseLayout>
+
+<!-- Contact logic — topic pills, FAQ accordion, client-side validate → success (ported verbatim) -->
+<script is:inline>
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    function decode(s) { var t = document.createElement('textarea'); t.innerHTML = s; return t.value; }
+
+    /* topic pills */
+    document.querySelectorAll('#ctPills .ct-pill').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('#ctPills .ct-pill').forEach(function (b) { b.classList.remove('is-active'); });
+        btn.classList.add('is-active');
+        var topic = decode(btn.getAttribute('data-topic'));
+        $('ctTopic').value = topic;
+        var subj = $('ctSubject');
+        if (!subj.value || subj.dataset.auto === '1') { subj.value = topic; subj.dataset.auto = '1'; }
+      });
+    });
+    $('ctSubject').addEventListener('input', function () { this.dataset.auto = '0'; });
+
+    /* FAQ */
+    window.ctFaq = function (btn) {
+      var item = btn.closest('.ct-faq-item');
+      var ans = item.querySelector('.ct-faq-a');
+      var isOpen = item.classList.contains('open');
+      document.querySelectorAll('.ct-faq-item').forEach(function (it) { it.classList.remove('open'); it.querySelector('.ct-faq-a').style.maxHeight = null; });
+      if (!isOpen) { item.classList.add('open'); ans.style.maxHeight = ans.scrollHeight + 'px'; }
+    };
+    var first = document.querySelector('.ct-faq-item.open .ct-faq-a');
+    if (first) first.style.maxHeight = first.scrollHeight + 'px';
+
+    /* submit */
+    window.ctSubmit = function (e) {
+      e.preventDefault();
+      var form = $('ctForm');
+      var firstBad = null;
+      form.querySelectorAll('input[required], textarea[required]').forEach(function (inp) {
+        var ok = inp.value.trim() !== '' && (inp.type !== 'email' || /.+@.+\..+/.test(inp.value));
+        inp.classList.toggle('err', !ok);
+        if (!ok && !firstBad) firstBad = inp;
+      });
+      var consent = $('ctConsent');
+      if (!consent.checked && !firstBad) firstBad = consent;
+      if (firstBad) { if (firstBad.focus) firstBad.focus(); if (firstBad.scrollIntoView) firstBad.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+      $('ctSuccessName').textContent = ($('ctName').value.trim().split(' ')[0]) || 'friend';
+      $('ctSuccessEmail').textContent = $('ctEmail').value.trim() || 'your inbox';
+      $('ctFormBody').style.display = 'none';
+      $('ctSuccess').classList.add('is-open');
+    };
+    window.ctReset = function () {
+      var form = $('ctForm');
+      form.reset();
+      $('ctSubject').dataset.auto = '';
+      $('ctFormBody').style.display = '';
+      $('ctSuccess').classList.remove('is-open');
+      form.querySelectorAll('.err').forEach(function (el) { el.classList.remove('err'); });
+    };
+  })();
+</script>

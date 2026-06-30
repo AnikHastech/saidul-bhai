@@ -1,0 +1,88 @@
+---
+// ============================================================
+//  Licenses — credits & licences for the fonts, libraries and
+//  assets that power the asmaz storefront. Static content.
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import PageHeader from '~/components/layout/PageHeader.astro';
+
+export const prerender = false;
+
+interface LicenseItem { name: string; href?: string; license: string; desc: string }
+interface LicenseGroup { title: string; items: LicenseItem[] }
+
+const groups: LicenseGroup[] = [
+  {
+    title: 'Typography',
+    items: [
+      { name: 'Barlow Condensed', href: 'https://fonts.google.com/specimen/Barlow+Condensed', license: 'OFL 1.1', desc: 'Headline & display typeface. Open Font License — free for commercial use.' },
+      { name: 'Inter', href: 'https://fonts.google.com/specimen/Inter', license: 'OFL 1.1', desc: 'UI & body typeface by Rasmus Andersson. Open Font License.' },
+    ],
+  },
+  {
+    title: 'Core stack',
+    items: [
+      { name: 'Astro', href: 'https://astro.build', license: 'MIT', desc: 'The web framework powering the SSR storefront.' },
+      { name: 'React', href: 'https://react.dev', license: 'MIT', desc: 'Powers the interactive islands (cart, drawers, quick view).' },
+      { name: 'nanostores', href: 'https://github.com/nanostores/nanostores', license: 'MIT', desc: 'Framework-agnostic state shared across islands.' },
+      { name: 'Vite', href: 'https://vite.dev', license: 'MIT', desc: 'Build tooling and dev server under Astro.' },
+    ],
+  },
+  {
+    title: 'Commerce & data',
+    items: [
+      { name: 'Shopify Storefront API', href: 'https://shopify.dev/docs/api/storefront', license: 'Shopify API Terms', desc: 'Product, collection and cart data. Used under Shopify’s API License.' },
+      { name: 'Shopify Customer Account API', href: 'https://shopify.dev/docs/api/customer', license: 'Shopify API Terms', desc: 'OAuth-based customer login and account data.' },
+    ],
+  },
+  {
+    title: 'Media & assets',
+    items: [
+      { name: 'Freepik', href: 'https://www.freepik.com', license: 'Freepik License', desc: 'Product & lifestyle imagery used throughout the demo is designed by / sourced from Freepik. Image by Freepik — used for demonstration under the Freepik License, which requires attribution on the free tier.' },
+      { name: 'Unsplash', href: 'https://unsplash.com', license: 'Unsplash License', desc: 'Hero and editorial photography sourced from Unsplash. Free to use under the Unsplash License — attribution appreciated but not required.' },
+      { name: 'Product & lifestyle imagery', license: 'Demo use', desc: 'Placeholder imagery is for demonstration only and is not licensed for production resale. Replace with your own licensed assets (or a paid Freepik plan) before launch.' },
+      { name: 'Iconography', license: 'Original / MIT', desc: 'Inline SVG icons drawn for this theme or adapted from MIT-licensed sets.' },
+    ],
+  },
+];
+---
+
+<BaseLayout title="Licenses" description="Credits and licences for the fonts, libraries and assets behind asmaz.">
+  <PageHeader
+    eyebrow="Credits"
+    title="Licenses"
+    description="The open-source work and assets this storefront is built on — with thanks."
+    crumbs={[{ label: 'Home', href: '/' }, { label: 'Licenses' }]}
+  />
+
+  <div class="wrap mp">
+    <p class="lic-intro">
+      asmaz stands on a lot of excellent open-source work. Below is the software, type and media used
+      to build this theme, along with each item’s licence. Where a licence requires attribution, it’s
+      given here.
+    </p>
+
+    {groups.map((g) => (
+      <section class="lic-group">
+        <h2 class="lic-group__title">{g.title}</h2>
+        <div class="lic-table">
+          {g.items.map((it) => (
+            <div class="lic-item">
+              <span class="lic-item__name">
+                {it.href ? <a href={it.href} target="_blank" rel="noopener noreferrer">{it.name}</a> : it.name}
+              </span>
+              <span class="lic-badge">{it.license}</span>
+              <span class="lic-item__desc">{it.desc}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+    ))}
+
+    <p class="lic-foot">
+      The asmaz theme and its bespoke code are &copy; {new Date().getFullYear()} asmaz Tech Co. All third-party
+      names and trademarks are the property of their respective owners. Demo content and imagery are provided for
+      preview purposes only — please supply licensed assets before going live.
+    </p>
+  </div>
+</BaseLayout>

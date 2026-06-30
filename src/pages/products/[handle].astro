@@ -1,0 +1,934 @@
+---
+// ============================================================
+//  PDP — pixel-faithful port of magazine-style-html/product-magazine.html.
+//  Breadcrumb · gallery · buy box (variants/price/qty/deal/offers/
+//  accordions/share/related) · statement+3col · testimonials · video ·
+//  you-may-also-like · trending marquee · recently viewed. Visual design
+//  is 100% identical; all product data, images, variants, price, and
+//  recommendations come from Shopify. Page chrome + sitewide Instagram
+//  band come from BaseLayout.
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import Button from '~/components/ui/Button.astro';
+import QuickViewModal from '~/components/react/QuickViewModal';
+import { getProduct, getProductRecommendations } from '~/lib/shopify';
+import { formatMoney } from '~/lib/utils';
+import { SITE } from '~/config/site';
+import type { Product, ProductCard, Image } from '~/lib/shopify/types';
+
+export const prerender = false;
+
+const { handle } = Astro.params;
+const origin = Astro.url.origin;
+
+let product: Product | null = null;
+let recommendations: ProductCard[] = [];
+let loadFailed = false;
+
+try {
+  product = await getProduct(handle!);
+} catch (err) {
+  loadFailed = true;
+  console.error('[product] load failed:', (err as Error).message);
+}
+if (product) {
+  try {
+    recommendations = await getProductRecommendations(product.id, 8);
+  } catch (err) {
+    console.error('[product] recommendations failed:', (err as Error).message);
+  }
+}
+if (loadFailed) Astro.response.status = 503;
+else if (!product) Astro.response.status = 404;
+
+// ── Derived data (only computed when the product exists) ──
+let view: any = null;
+if (product) {
+  const currency = product.priceRange.minVariantPrice.currencyCode;
+  const money = (a: string | number) => formatMoney(a, currency);
+
+  const images: Image[] = product.images.length
+    ? product.images
+    : product.featuredImage
+      ? [product.featuredImage]
+      : [];
+
+  const variants = product.variants ?? [];
+  const realOptions = (product.options ?? []).filter(
+    (o) => !(o.optionValues.length === 1 && o.optionValues[0].name === 'Default Title'),
+  );
+  const colorOpt = realOptions.find((o) => /colou?r/i.test(o.name)) ?? null;
+  const sizeOpts = realOptions.filter((o) => o !== colorOpt);
+  const optVal = (v: Product['variants'][number], name: string) =>
+    v.selectedOptions.find((o) => o.name === name)?.value ?? '';
+
+  const defaultVariant = variants.find((v) => v.availableForSale) ?? variants[0] ?? null;
+  const dvPrice = defaultVariant ? defaultVariant.price.amount : product.priceRange.minVariantPrice.amount;
+  const dvCompare = defaultVariant?.compareAtPrice?.amount ?? product.compareAtPriceRange?.minVariantPrice.amount ?? null;
+  const onSale = dvCompare != null && Number(dvCompare) > Number(dvPrice);
+  const saveAmt = onSale ? Number(dvCompare) - Number(dvPrice) : 0;
+
+  // representative image for a colour value
+  const colorImage = (val: string): string => {
+    const withImg = variants.find((v) => optVal(v, colorOpt!.name) === val && v.image);
+    return withImg?.image?.url ?? product.featuredImage?.url ?? images[0]?.url ?? '';
+  };
+  const valueAvailable = (optName: string, val: string) =>
+    variants.some((v) => optVal(v, optName) === val && v.availableForSale);
+
+  // client-side variant matrix
+  const variantData = variants.map((v) => ({
+    id: v.id,
+    available: v.availableForSale,
+    options: Object.fromEntries(v.selectedOptions.map((o) => [o.name, o.value])),
+    price: Number(v.price.amount),
+    compareAt: v.compareAtPrice ? Number(v.compareAtPrice.amount) : null,
+    img: v.image?.url ?? null,
+    sku: v.sku ?? null,
+  }));
+
+  // Some stores include trailing punctuation in option names (e.g. "Storage:").
+  const dispName = (n: string) => n.replace(/[\s:：]+$/, '');
+  const colorValues = colorOpt
+    ? colorOpt.optionValues.map((ov) => ov.name)
+    : [];
+  const defaultColor = colorOpt && defaultVariant ? optVal(defaultVariant, colorOpt.name) : '';
+  const stars = '★★★★★';
+  const rating = (4 + ((product.handle.length * 7) % 10) / 10).toFixed(1);
+  const reviewCount = 80 + ((product.handle.length * 37) % 400);
+  const qty = defaultVariant?.quantityAvailable ?? null;
+
+  // Clean, length-capped meta description (strip HTML/whitespace).
+  const metaDesc = (
+    product.seo?.description ||
+    product.description ||
+    `Buy ${product.title} at ${SITE.name}.`
+  )
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 160);
+
+  // Product + breadcrumb structured data for rich results.
+  const productLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.title,
+    description: metaDesc,
+    image: images.map((i) => i.url).slice(0, 8),
+    ...(defaultVariant?.sku ? { sku: defaultVariant.sku } : {}),
+    ...(product.vendor ? { brand: { '@type': 'Brand', name: product.vendor } } : {}),
+    offers: {
+      '@type': 'Offer',
+      price: Number(dvPrice).toFixed(2),
+      priceCurrency: currency,
+      availability: defaultVariant?.availableForSale
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
+      url: Astro.url.href,
+    },
+  };
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: origin },
+      { '@type': 'ListItem', position: 2, name: 'Shop', item: `${origin}/products` },
+      { '@type': 'ListItem', position: 3, name: product.title, item: Astro.url.href },
+    ],
+  };
+
+  view = {
+    product, currency, money, images, variants, colorOpt, sizeOpts, optVal,
+    defaultVariant, dvPrice, dvCompare, onSale, saveAmt, colorImage, valueAvailable,
+    variantData, colorValues, defaultColor, stars, rating, reviewCount, qty, dispName,
+    pageUrl: Astro.url.href, metaDesc, productLd, breadcrumbLd,
+  };
+}
+
+const rec = recommendations;
+const recMain = rec.slice(0, 4);
+const recMore = rec.slice(4, 8);
+const fmtRec = (a: string | number, c: string) => formatMoney(a, c);
+const recRating = (h: string) => (4 + ((h.length * 7) % 10) / 10).toFixed(1);
+const recReviews = (h: string) => (80 + ((h.length * 37) % 4000)).toLocaleString('en-US');
+// decorative media fallbacks (template assets aren't in /public)
+const chip = (i: number) => (view?.images[i]?.url ?? view?.product.featuredImage?.url ?? rec[i]?.featuredImage?.url ?? '');
+---
+
+{
+  view ? (
+    <BaseLayout
+      title={view.product.seo?.title ?? view.product.title}
+      description={view.metaDesc}
+      image={view.product.featuredImage?.url}
+      imageAlt={view.product.featuredImage?.altText ?? view.product.title}
+      type="product"
+      jsonLd={[view.productLd, view.breadcrumbLd]}
+    >
+      <div class="mz-shop">
+
+        <!-- ============ BREADCRUMB ============ -->
+        <div class="pd-crumb">
+          <div class="container pd-crumb-inner">
+            <a href="/">Home</a>
+            <span class="sep">/</span>
+            <a href="/products">Shop</a>
+            {view.product.productType && (
+              <>
+                <span class="sep">/</span>
+                <a href="/products">{view.product.productType}</a>
+              </>
+            )}
+            <span class="sep">/</span>
+            <span class="cur">{view.product.title}</span>
+          </div>
+        </div>
+
+        <div class="pd-shell">
+          <section class="pd">
+            <div class="container">
+              <div class="pd-layout">
+
+                <!-- ============ GALLERY ============ -->
+                <div class="pd-gallery">
+                  <div class="pd-main">
+                    {view.onSale && <span class="pd-badge" id="pdBadge">Save {view.money(view.saveAmt)}</span>}
+                    <img id="pdMainImg" src={view.images[0]?.url} alt={view.product.title}>
+                  </div>
+                  <div class="pd-thumbs" id="pdThumbs">
+                    {view.images.slice(0, 6).map((img: Image, i: number) => (
+                      <div
+                        class:list={['pd-thumb', i === 0 && 'is-active']}
+                        data-img={img.url}
+                        role="button"
+                        tabindex="0"
+                        aria-label={`Show image ${i + 1}`}
+                        aria-pressed={i === 0 ? 'true' : 'false'}
+                      >
+                        <img src={img.url} alt={img.altText ?? view.product.title} loading="lazy">
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <!-- ============ INFO ============ -->
+                <div
+                  class="pd-info"
+                  id="pdInfo"
+                  data-color-opt={view.colorOpt?.name ?? ''}
+                  data-variant-id={view.defaultVariant?.id ?? ''}
+                  data-currency={view.currency}
+                >
+                  <p class="pd-vendor">Vendor: <b>{view.product.vendor || 'asmaz'}</b></p>
+                  <h1 class="pd-title">{view.product.title}</h1>
+                  <div class="pd-rating">
+                    <span class="stars">{view.stars}</span>
+                    <span>{view.rating}</span>
+                    <a href="#pdReviews">{view.reviewCount} Reviews</a>
+                  </div>
+
+                  <div class="pd-price-row">
+                    <span class="pd-price" id="pdPrice">{view.money(view.dvPrice)}</span>
+                    {view.onSale && <span class="pd-price-old" id="pdPriceOld">{view.money(view.dvCompare)}</span>}
+                    {view.onSale && <span class="pd-save" id="pdSave">Save {view.money(view.saveAmt)}</span>}
+                  </div>
+                  <p class="pd-tax">Tax included. <a href="#">Shipping</a> calculated at checkout.</p>
+
+                  <div class="pd-divider"></div>
+
+                  <div class="pd-meta">
+                    {view.product.productType && (
+                      <div class="pd-meta-row">
+                        <span class="bullet"></span>
+                        <span class="k">Product Type:</span><span class="v">{view.product.productType}</span>
+                      </div>
+                    )}
+                    {view.defaultVariant?.sku && (
+                      <div class="pd-meta-row">
+                        <span class="bullet"></span>
+                        <span class="k">SKU:</span><span class="v" id="pdSku">{view.defaultVariant.sku}</span>
+                      </div>
+                    )}
+                    <div class="pd-meta-row">
+                      <span class="bullet"></span>
+                      <span class="k">Availability:</span><span class="v" id="pdAvail">{view.product.availableForSale ? 'In stock' : 'Sold out'}</span>
+                    </div>
+                  </div>
+                  <p class="pd-stock">
+                    {view.qty != null && view.qty > 0
+                      ? <Fragment>Only <b>{view.qty} items</b> left in stock — make it hurry!</Fragment>
+                      : <Fragment><b>In stock</b> — ready to ship today.</Fragment>}
+                  </p>
+
+                  <!-- Deal box: countdown + coupon -->
+                  <div class="pd-deal">
+                    <div class="pd-cd">
+                      <div class="pd-cd-units">
+                        <div class="pd-cd-unit"><span class="pd-cd-val" id="pdCdD">00</span><span class="pd-cd-lbl">Days</span></div>
+                        <div class="pd-cd-unit"><span class="pd-cd-val" id="pdCdH">00</span><span class="pd-cd-lbl">Hours</span></div>
+                        <div class="pd-cd-unit"><span class="pd-cd-val" id="pdCdM">00</span><span class="pd-cd-lbl">Mins</span></div>
+                        <div class="pd-cd-unit"><span class="pd-cd-val" id="pdCdS">00</span><span class="pd-cd-lbl">Secs</span></div>
+                      </div>
+                      <p class="pd-cd-note">Deal ends soon — shop now before it's gone.</p>
+                    </div>
+                    <div class="pd-coupon">
+                      <span class="pd-coupon-code">asmaz20</span>
+                      <span class="pd-coupon-desc">Use this code at checkout and get an extra 20% off.</span>
+                    </div>
+                  </div>
+
+                  {view.colorOpt && (
+                    <div class="pd-opt">
+                      <div class="pd-opt-label">{view.dispName(view.colorOpt.name)}: <span id="pdColourName">{view.defaultColor}</span></div>
+                      <div class="pd-swatches" id="pdSwatches">
+                        {view.colorValues.map((val: string) => (
+                          <div
+                            class:list={['pd-swatch', val === view.defaultColor && 'is-active']}
+                            data-color={val}
+                            data-img={view.colorImage(val)}
+                            role="button"
+                            tabindex="0"
+                            aria-label={val}
+                            aria-pressed={val === view.defaultColor ? 'true' : 'false'}
+                          >
+                            <img src={view.colorImage(val)} alt="">
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {view.sizeOpts.map((opt: Product['options'][number]) => {
+                    const defVal = view.defaultVariant ? view.optVal(view.defaultVariant, opt.name) : '';
+                    return (
+                      <div class="pd-opt">
+                        <div class="pd-opt-label">{view.dispName(opt.name)}: <span class="pd-opt-current" data-opt-current={opt.name}>{defVal}</span></div>
+                        <div class="pd-sizes" data-opt-group={opt.name}>
+                          {opt.optionValues.map((ov) => {
+                            const out = !view.valueAvailable(opt.name, ov.name);
+                            return (
+                              <button
+                                class:list={['pd-size', ov.name === defVal && 'is-active', out && 'is-out']}
+                                data-opt-name={opt.name}
+                                data-value={ov.name}
+                                disabled={out}
+                              >{ov.name}</button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  <!-- Buy -->
+                  <div class="pd-buy">
+                    <div class="pd-qty" id="pdQty">
+                      <button aria-label="Decrease">−</button>
+                      <span id="pdQtyVal">1</span>
+                      <button aria-label="Increase">+</button>
+                    </div>
+                    <button class="pd-add" id="pdAdd">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h9.4a2 2 0 0 0 2-1.5L23 6H6" /></svg>
+                      Add to cart
+                    </button>
+                  </div>
+                  <button class="pd-buynow" id="pdBuyNow">Buy it now</button>
+
+                  <!-- Offers -->
+                  <div class="pd-offers">
+                    <span class="pd-offers-title">Available Offers</span>
+                    <div class="pd-offer"><span class="bullet"></span><span><b>Instant 10% discount</b> on Bank Credit/Debit Cards.</span></div>
+                    <div class="pd-offer"><span class="bullet"></span><span><b>Same-day delivery</b> with Hyper-Express in metro cities.</span></div>
+                    <div class="pd-offer"><span class="bullet"></span><span><b>Free delivery</b> on orders over $250.</span></div>
+                    <div class="pd-offer"><span class="bullet"></span><span>Order in the next <b>14 hrs 25 min</b> to get it by Thursday.</span></div>
+                  </div>
+
+                  <!-- Pickup -->
+                  <div class="pd-pickup">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                    <span>Pickup available at <b>asmaz Flagship, Downtown</b> — usually ready in 24 hrs. <a href="#">Check availability</a></span>
+                  </div>
+
+                  <!-- Payment -->
+                  <div class="pd-pay">
+                    <div class="pd-pay-title">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                      Payment secured with
+                    </div>
+                    <div class="pd-pay-icons">
+                      <span class="pd-pay-tile">VISA</span><span class="pd-pay-tile">MC</span><span class="pd-pay-tile">AMEX</span><span class="pd-pay-tile">PAYPAL</span><span class="pd-pay-tile">APPLE</span><span class="pd-pay-tile">G PAY</span><span class="pd-pay-tile">KLARNA</span>
+                    </div>
+                  </div>
+
+                  <!-- Accordions -->
+                  <div class="pd-acc" id="pdReviews">
+                    <div class="pd-acc-item is-open">
+                      <button class="pd-acc-head" type="button">
+                        <span class="pd-acc-ic">Product Description</span>
+                        <svg class="pd-acc-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" /></svg>
+                      </button>
+                      <div class="pd-acc-panel"><div class="pd-acc-clip"><div class="pd-acc-body">
+                        {view.product.descriptionHtml
+                          ? <Fragment set:html={view.product.descriptionHtml} />
+                          : <Fragment>{view.product.description || 'Hand-tested and spec-checked by our editors — only the gear we\'d actually recommend.'}</Fragment>}
+                      </div></div></div>
+                    </div>
+
+                    <div class="pd-acc-item">
+                      <button class="pd-acc-head" type="button">
+                        <span class="pd-acc-ic">Specifications</span>
+                        <svg class="pd-acc-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" /></svg>
+                      </button>
+                      <div class="pd-acc-panel"><div class="pd-acc-clip"><div class="pd-acc-body">
+                        <table class="pd-spec">
+                          <tr><th>Brand</th><td>{view.product.vendor || 'asmaz'}</td></tr>
+                          {view.product.productType && <tr><th>Type</th><td>{view.product.productType}</td></tr>}
+                          <tr><th>Availability</th><td>{view.product.availableForSale ? 'In stock' : 'Out of stock'}</td></tr>
+                          <tr><th>Price</th><td>{view.money(view.dvPrice)}</td></tr>
+                          {view.product.tags && view.product.tags.length > 0 && <tr><th>Tags</th><td>{view.product.tags.slice(0, 6).join(', ')}</td></tr>}
+                        </table>
+                      </div></div></div>
+                    </div>
+
+                    <div class="pd-acc-item">
+                      <button class="pd-acc-head" type="button">
+                        <span class="pd-acc-ic">Sustainability</span>
+                        <svg class="pd-acc-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" /></svg>
+                      </button>
+                      <div class="pd-acc-panel"><div class="pd-acc-clip"><div class="pd-acc-body">Built with recycled materials and shipped in 100% plastic-free packaging. Trade in any old device for store credit and we'll recycle it for free.</div></div></div>
+                    </div>
+
+                    <div class="pd-acc-item">
+                      <button class="pd-acc-head" type="button">
+                        <span class="pd-acc-ic">Care &amp; Packaging</span>
+                        <svg class="pd-acc-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" /></svg>
+                      </button>
+                      <div class="pd-acc-panel"><div class="pd-acc-clip"><div class="pd-acc-body">Ships in a recyclable box with everything you need to get started. Wipe with a soft, dry cloth — avoid harsh solvents.</div></div></div>
+                    </div>
+
+                    <div class="pd-acc-item">
+                      <button class="pd-acc-head" type="button">
+                        <span class="pd-acc-ic">Write a Review</span>
+                        <svg class="pd-acc-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" /></svg>
+                      </button>
+                      <div class="pd-acc-panel"><div class="pd-acc-clip"><div class="pd-acc-body">Loved your {view.product.title}? <a href="#" style="color:var(--news-black);text-decoration:underline;">Share your review</a> and help other shoppers decide.</div></div></div>
+                    </div>
+                  </div>
+
+                  <!-- Share -->
+                  <div class="pd-share">
+                    <div class="pd-share-l">
+                      Share:
+                      <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(view.pageUrl)}`} target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.07C24 5.41 18.63 0 12 0S0 5.41 0 12.07c0 6 4.39 11 10.13 11.93v-8.44H7.08v-3.5h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.69.24 2.69.24v2.97h-1.52c-1.49 0-1.96.93-1.96 1.89v2.26h3.33l-.53 3.5h-2.8V24C19.61 23.07 24 18.07 24 12.07z" /></svg></a>
+                      <a href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(view.pageUrl)}&text=${encodeURIComponent(view.product.title)}`} target="_blank" rel="noopener" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg></a>
+                      <a href={`https://pinterest.com/pin/create/button/?url=${encodeURIComponent(view.pageUrl)}`} target="_blank" rel="noopener" aria-label="Pinterest"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.08 3.16 9.42 7.62 11.16-.1-.95-.2-2.4.04-3.44.22-.93 1.4-5.94 1.4-5.94s-.36-.72-.36-1.78c0-1.66.97-2.9 2.17-2.9 1.02 0 1.51.77 1.51 1.69 0 1.03-.66 2.57-1 4-.28 1.2.6 2.17 1.78 2.17 2.13 0 3.77-2.25 3.77-5.5 0-2.87-2.06-4.88-5.01-4.88-3.41 0-5.42 2.56-5.42 5.2 0 1.03.4 2.13.89 2.73.1.12.11.22.08.34l-.33 1.37c-.05.22-.18.27-.41.16-1.53-.71-2.48-2.94-2.48-4.74 0-3.86 2.8-7.4 8.08-7.4 4.24 0 7.54 3.02 7.54 7.06 0 4.21-2.66 7.6-6.34 7.6-1.24 0-2.4-.64-2.8-1.4l-.76 2.9c-.27 1.06-1.01 2.39-1.51 3.2A12 12 0 1 0 12 0z" /></svg></a>
+                      <a href="#" data-copy-link aria-label="Copy link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" /></svg></a>
+                    </div>
+                    <a href="/pages/contact" class="pd-ask">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.2A8.38 8.38 0 0 1 4 11.5a8.5 8.5 0 0 1 17 0z" /><path d="M9.5 9.5a2.5 2.5 0 0 1 4.5 1.5c0 1.5-2 2-2 3M12 17h.01" /></svg>
+                      Ask a Question
+                    </a>
+                  </div>
+
+                  <!-- Related -->
+                  {rec[0] && (
+                    <div class="pd-related">
+                      <span class="pd-related-title">Aligns well with</span>
+                      <div class="pd-related-card" data-variant-id={rec[0].firstVariantId} data-price={rec[0].priceRange.minVariantPrice.amount} data-currency={rec[0].priceRange.minVariantPrice.currencyCode}>
+                        {rec[0].featuredImage && <img src={rec[0].featuredImage.url} alt={rec[0].title}>}
+                        <div class="pd-related-info">
+                          <div class="nm"><a href={`/products/${rec[0].handle}`} style="color:inherit;text-decoration:none;">{rec[0].title}</a></div>
+                          <div class="pr">{fmtRec(rec[0].priceRange.minVariantPrice.amount, rec[0].priceRange.minVariantPrice.currencyCode)}</div>
+                        </div>
+                        <button class="pd-related-view">Add</button>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ STATEMENT + 3-COL INFO ============ -->
+          <section class="pdx">
+            <div class="container">
+              <p class="pdx-statement">
+                Experience <span class="pdx-chip"><img src={chip(0)} alt=""></span> innovation with top-tier gadgets that redefine convenience, <span class="pdx-chip"><img src={chip(1)} alt=""></span> efficiency, and <span class="pdx-chip"><img src={chip(2)} alt=""></span> style with premium technology.
+              </p>
+              <div class="pdx-cols">
+                <div class="pdx-col">
+                  <h3>Technical info</h3>
+                  <div class="pdx-sub"><h4>Overview</h4><p>{view.product.description ? view.product.description.slice(0, 220) : 'Engineered for everyday performance — premium materials, refined finish and the reliability our editors demand before anything earns a place on the shelf.'}</p></div>
+                  <div class="pdx-sub"><h4>Build</h4><p>Precision-machined chassis with a durable, scratch-resistant finish. Every unit is inspected by hand before it ships.</p></div>
+                  <div class="pdx-sub"><h4>In the box</h4><p>The {view.product.title}, quick-start guide and all the essentials to get going in minutes.</p></div>
+                  <a href="#" class="pdx-more">More info</a>
+                </div>
+                <div class="pdx-col">
+                  <h3>Shopping &amp; Return</h3>
+                  <div class="pdx-sub"><h4>Shipping</h4><p><span class="lbl">Free Standard Shipping:</span> On all orders with no minimum purchase required. 3–7 days for domestic delivery.</p><p><span class="lbl">Express Delivery:</span> Available for an additional charge.</p><p><span class="lbl">International Shipping:</span> 7–14 days; duties calculated at checkout. All packaging is plastic free and recyclable.</p></div>
+                  <div class="pdx-sub"><h4>Return &amp; Exchange</h4><p>30 days Return Policy for a full refund or exchange. Complimentary free return for defective or damaged items.</p></div>
+                </div>
+                <div class="pdx-col">
+                  <h3>Payment, Security and Warranty</h3>
+                  <div class="pdx-sub"><h4>Payment</h4><p>To build trust and ensure a seamless shopping experience, our store offers secure payment options, robust security measures, and clear warranty policies:</p><ol><li>Credit Card / Debit Card</li><li>Digital Wallets</li><li>Cash on Delivery (COD)</li><li>Bank Transfer and EMI</li></ol></div>
+                  <div class="pdx-sub"><h4>Warranty</h4><p>At asmaz, we stand behind the quality of every product. All our products come with a 2-year limited warranty, covering any defects in materials or workmanship under normal use.</p></div>
+                  <a href="#" class="pdx-more">More info</a>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ TESTIMONIALS ============ -->
+          <section class="pdx pdx-tight">
+            <div class="container">
+              <div class="pdx-head">
+                <span class="label-kicker">Reviews</span>
+                <h2>Hear the stories of satisfaction from our valued customers!</h2>
+              </div>
+              <div class="pdx-testi-grid" id="pdxTestiTrack">
+                {[
+                  { s: '★★★★<i>★</i>', r: '4/5', q: 'It\'s not just about the specs or the <b>build quality</b> though those play a big role. This has become a staple — every time I pick it up the <b>performance</b> just delivers, and it\'s stayed fast for years.', ro: 'Business Director', nm: 'Neha Williamson' },
+                  { s: '★★★★★', r: '5/5', q: 'It\'s not just about the price or the <b>warranty</b> though those play a big role. Every time I use it the <b>quality</b> shows — and it\'s so durable it\'s lasted me for years.', ro: 'School Teacher', nm: 'Jiniya Anderson' },
+                  { s: '★★★★<i>★</i>', r: '4/5', q: 'It\'s not just about the design or the <b>finish</b> though those play a big role. This has become a staple — every time I use it, it just works, and it\'s been reliable for years.', ro: 'Bank Officer', nm: 'Lora Smith' },
+                  { s: '★★★★★', r: '5/5', q: 'Honestly the best upgrade I\'ve made all year. The <b>experience</b> is stunning and <b>setup</b> took two minutes. Support was instant.', ro: 'Product Designer', nm: 'Omar Haque' },
+                  { s: '★★★★<i>★</i>', r: '4/5', q: 'Using this every day is a dream. The <b>feel</b> is premium and it looks gorgeous. Delivery was same-day and the <b>trade-in</b> credit knocked off a big chunk.', ro: 'Software Engineer', nm: 'Priya Nair' },
+                  { s: '★★★★★', r: '5/5', q: 'Quality is unreal for the price. The <b>details</b> blew me away, and the build feels rock solid. I\'ve recommended it to my whole team — <b>five stars</b>.', ro: 'Photographer', nm: 'Daniel Cole' },
+                ].map((t, i) => {
+                  const p = rec[i % Math.max(1, rec.length)];
+                  return (
+                    <div class="pdx-testi">
+                      <div class="pdx-testi-rate"><span class="s" set:html={t.s} /><b>{t.r}</b></div>
+                      <p class="pdx-testi-quote" set:html={`"${t.q}"`} />
+                      <div class="pdx-testi-person"><span class="ro">{t.ro}</span><span class="nm">{t.nm}</span></div>
+                      <hr class="pdx-testi-div">
+                      {p && (
+                        <a href={`/products/${p.handle}`} class="pdx-testi-prod">
+                          {p.featuredImage && <img src={p.featuredImage.url} alt="">}
+                          <span><span class="pn">{p.title}</span><span class="pp">{fmtRec(p.priceRange.minVariantPrice.amount, p.priceRange.minVariantPrice.currencyCode)}</span></span>
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div class="pdx-testi-nav">
+                <button id="pdxTestiPrev" aria-label="Previous reviews"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6" /></svg></button>
+                <button id="pdxTestiNext" aria-label="Next reviews"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6" /></svg></button>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ VIDEO BANNER ============ -->
+          <section class="pdx-video">
+            <img src="/images/hero.jpg" alt="" loading="lazy" decoding="async" />
+            <div class="pdx-video-in">
+              <h2>The Pinnacle of Modern Electronics and Innovation</h2>
+              <p>See how the {view.product.title} is engineered — hand-tested, spec-checked and built to last.</p>
+            </div>
+          </section>
+
+          <!-- ============ YOU MAY ALSO LIKE ============ -->
+          {recMain.length > 0 && (
+            <section class="pdx">
+              <div class="container">
+                <div class="section-head">
+                  <div class="section-head-left">
+                    <span class="label-kicker">Recommended</span>
+                    <h2>YOU MAY <em>ALSO LIKE.</em></h2>
+                  </div>
+                  <div class="section-head-right">
+                    <a href="/products" class="see-all-link">Shop All Products
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                    </a>
+                  </div>
+                </div>
+                <div class="pdx-grid">
+                  {recMain.map((p) => {
+                    const min = p.priceRange.minVariantPrice;
+                    const ca = p.compareAtPriceRange?.minVariantPrice ?? null;
+                    const sale = ca && Number(ca.amount) > Number(min.amount);
+                    const off = sale ? Math.round((1 - Number(min.amount) / Number(ca!.amount)) * 100) : null;
+                    return (
+                      <article class="bs-card">
+                        <div class="bs-card-media">
+                          <a class="media-link" href={`/products/${p.handle}`}>{p.featuredImage && <img src={p.featuredImage.url} alt={p.title} loading="lazy" />}</a>
+                          <div class="bs-card-flags">{sale && off != null && <span class="bs-flag red">−{off}%</span>}</div>
+                          <div class="bs-quick">
+                            <button class="qv" data-qv-handle={p.handle}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg> Quick view</button>
+                            <button class="add" data-variant-id={p.firstVariantId} data-price={min.amount} data-currency={min.currencyCode}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h9.4a2 2 0 0 0 2-1.5L23 6H6" /></svg> Add to Cart</button>
+                          </div>
+                        </div>
+                        <div class="bs-card-body">
+                          {p.vendor && <span class="bs-card-brand">{p.vendor}</span>}
+                          <h3 class="bs-card-name"><a href={`/products/${p.handle}`}>{p.title}</a></h3>
+                          <div class="bs-card-rating"><span class="stars">★★★★★</span><span class="rval">{recRating(p.handle)}</span><span class="rcnt">({recReviews(p.handle)})</span></div>
+                          <div class="bs-card-prices">
+                            <div class="bs-card-price-stack"><span class="bs-card-price">{fmtRec(min.amount, min.currencyCode)}</span>{sale && <span class="bs-card-price-old">{fmtRec(ca!.amount, ca!.currencyCode)}</span>}</div>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+          )}
+
+          <!-- ============ TRENDING MARQUEE ============ -->
+          <div class="trending-marquee" aria-hidden="true">
+            <div class="marquee-track">
+              {[0, 1].map(() => (
+                <Fragment>
+                  <span class="marquee-item"><span class="fire">🔥</span> TRENDING <span class="dot"></span></span>
+                  {rec.slice(0, 6).map((p) => (
+                    <span class="marquee-item">{p.title} <span class="dot"></span></span>
+                  ))}
+                  <span class="marquee-item"><span class="fire">⚡</span> FLASH DEAL — limited stock <span class="dot"></span></span>
+                </Fragment>
+              ))}
+            </div>
+          </div>
+
+          <!-- ============ RECENTLY VIEWED ============ -->
+          <section class="pdx" id="pdRecentSection" hidden>
+            <div class="container">
+              <div class="section-head">
+                <div class="section-head-left">
+                  <span class="label-kicker">Your History</span>
+                  <h2>RECENTLY <em>VIEWED.</em></h2>
+                </div>
+                <div class="section-head-right">
+                  <a href="/products" class="see-all-link">Shop All Products
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                  </a>
+                </div>
+              </div>
+              <div class="pdx-grid" id="pdRecentGrid"></div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      {/* current product summary for the recently-viewed tracker */}
+      <script
+        type="application/json"
+        id="pdCurrent"
+        set:html={JSON.stringify({
+          id: view.product.id,
+          handle: view.product.handle,
+          title: view.product.title,
+          vendor: view.product.vendor ?? null,
+          image: view.product.featuredImage?.url ?? null,
+          price: view.dvPrice,
+          currency: view.currency,
+          compareAt: view.dvCompare,
+          variantId: view.defaultVariant?.id ?? null,
+        })}
+      />
+      <script type="application/json" id="pdVariants" set:html={JSON.stringify(view.variantData)} />
+      <QuickViewModal client:idle />
+    </BaseLayout>
+  ) : (
+    <BaseLayout title={loadFailed ? 'Something went wrong' : 'Product not found'}>
+      <div class="wrap empty-state">
+        <p class="eyebrow kicker">{loadFailed ? 'Error 503' : 'Error 404'}</p>
+        <h2 class="masthead">{loadFailed ? 'Something went wrong' : 'Product not found'}</h2>
+        <p>{loadFailed ? "We couldn't load this product right now. Please try again shortly." : "We couldn't find that product."}</p>
+        <Button href="/products" variant="news">Shop all products</Button>
+      </div>
+    </BaseLayout>
+  )
+}
+
+<script>
+  import { addItem, checkout } from '~/stores/cart';
+  import { cachePrice } from '~/stores/price-cache';
+
+  const fmt = (amount: number, currency: string) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: Number.isInteger(amount) ? 0 : 2 }).format(amount);
+
+  const info = document.getElementById('pdInfo');
+  if (info) {
+    const variants = JSON.parse(document.getElementById('pdVariants')?.textContent || '[]');
+    const currency = info.dataset.currency || 'USD';
+    const colorOptName = info.dataset.colorOpt || '';
+    const mainImg = document.getElementById('pdMainImg') as HTMLImageElement | null;
+    const priceEl = document.getElementById('pdPrice');
+    const oldEl = document.getElementById('pdPriceOld');
+    const saveEl = document.getElementById('pdSave');
+    const badgeEl = document.getElementById('pdBadge');
+    const availEl = document.getElementById('pdAvail');
+    const addBtn = document.getElementById('pdAdd') as HTMLButtonElement | null;
+
+    // current selection from the default variant
+    const selection: Record<string, string> = {};
+    const def = variants.find((v: any) => v.available) || variants[0];
+    if (def) Object.assign(selection, def.options);
+
+    const findVariant = () =>
+      variants.find((v: any) => Object.keys(selection).every((k) => v.options[k] === selection[k])) || null;
+
+    function update() {
+      const v = findVariant();
+      if (!v) return;
+      if (priceEl) priceEl.textContent = fmt(v.price, currency);
+      if (oldEl) { if (v.compareAt && v.compareAt > v.price) { oldEl.textContent = fmt(v.compareAt, currency); oldEl.style.display = ''; } else oldEl.style.display = 'none'; }
+      const save = v.compareAt && v.compareAt > v.price ? v.compareAt - v.price : 0;
+      if (saveEl) { if (save > 0) { saveEl.textContent = 'Save ' + fmt(save, currency); saveEl.style.display = ''; } else saveEl.style.display = 'none'; }
+      if (badgeEl) { if (save > 0) { badgeEl.textContent = 'Save ' + fmt(save, currency); badgeEl.style.display = ''; } else badgeEl.style.display = 'none'; }
+      if (v.img && mainImg) mainImg.src = v.img;
+      if (availEl) availEl.textContent = v.available ? 'In stock' : 'Sold out';
+      const skuEl = document.getElementById('pdSku');
+      if (skuEl && v.sku) skuEl.textContent = v.sku;
+      if (addBtn) {
+        addBtn.dataset.variantId = v.id;
+        addBtn.dataset.price = String(v.price);
+        addBtn.disabled = !v.available;
+        addBtn.style.opacity = v.available ? '' : '.5';
+      }
+    }
+
+    // Enter/Space activate a role=button element (keyboard parity with click).
+    const onKeyActivate = (el: HTMLElement, fn: () => void) =>
+      el.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); }
+      });
+
+    // Thumbnails -> swap main image
+    const thumbs = Array.from(document.querySelectorAll('#pdThumbs .pd-thumb')) as HTMLElement[];
+    thumbs.forEach((t) => {
+      const activate = () => {
+        thumbs.forEach((x) => { x.classList.remove('is-active'); x.setAttribute('aria-pressed', 'false'); });
+        t.classList.add('is-active'); t.setAttribute('aria-pressed', 'true');
+        if (mainImg && t.dataset.img) mainImg.src = t.dataset.img;
+      };
+      t.addEventListener('click', activate);
+      onKeyActivate(t, activate);
+    });
+
+    // Colour swatches
+    const swatches = Array.from(document.querySelectorAll('#pdSwatches .pd-swatch')) as HTMLElement[];
+    const colourName = document.getElementById('pdColourName');
+    swatches.forEach((s) => {
+      const activate = () => {
+        swatches.forEach((x) => { x.classList.remove('is-active'); x.setAttribute('aria-pressed', 'false'); });
+        s.classList.add('is-active'); s.setAttribute('aria-pressed', 'true');
+        if (colourName) colourName.textContent = s.dataset.color || '';
+        if (colorOptName) selection[colorOptName] = s.dataset.color || '';
+        if (mainImg && s.dataset.img) mainImg.src = s.dataset.img;
+        thumbs.forEach((x) => { x.classList.remove('is-active'); x.setAttribute('aria-pressed', 'false'); });
+        update();
+      };
+      s.addEventListener('click', activate);
+      onKeyActivate(s, activate);
+    });
+
+    // Size / other option groups
+    document.querySelectorAll('.pd-sizes').forEach((group) => {
+      const btns = Array.from(group.querySelectorAll('.pd-size')) as HTMLButtonElement[];
+      btns.forEach((b) => b.addEventListener('click', () => {
+        if (b.disabled || b.classList.contains('is-out')) return;
+        btns.forEach((x) => x.classList.remove('is-active'));
+        b.classList.add('is-active');
+        const name = b.dataset.optName || '';
+        if (name) selection[name] = b.dataset.value || '';
+        const cur = document.querySelector(`[data-opt-current="${name}"]`);
+        if (cur) cur.textContent = b.dataset.value || '';
+        update();
+      }));
+    });
+
+    // Quantity stepper
+    const qtyVal = document.getElementById('pdQtyVal');
+    const qtyWrap = document.getElementById('pdQty');
+    if (qtyWrap && qtyVal) {
+      const qb = qtyWrap.querySelectorAll('button');
+      qb[0].addEventListener('click', () => { qtyVal.textContent = String(Math.max(1, parseInt(qtyVal.textContent || '1') - 1)); });
+      qb[1].addEventListener('click', () => { qtyVal.textContent = String(parseInt(qtyVal.textContent || '1') + 1); });
+    }
+    const getQty = () => Math.max(1, parseInt(qtyVal?.textContent || '1'));
+
+    async function doAdd(goCheckout: boolean) {
+      const v = findVariant();
+      const id = v?.id || addBtn?.dataset.variantId;
+      if (!id) return;
+      cachePrice(id, { amount: String(v?.price ?? addBtn?.dataset.price ?? 0), currencyCode: currency });
+      await addItem(id, getQty(), { open: !goCheckout });
+      if (goCheckout) await checkout();
+    }
+
+    addBtn?.addEventListener('click', async () => {
+      if (addBtn.disabled) return;
+      const orig = addBtn.innerHTML;
+      addBtn.disabled = true; addBtn.textContent = 'Adding…';
+      await doAdd(false);
+      addBtn.innerHTML = '✓ Added!';
+      setTimeout(() => { addBtn.disabled = false; addBtn.innerHTML = orig; }, 1800);
+    });
+    document.getElementById('pdBuyNow')?.addEventListener('click', () => doAdd(true));
+
+    update();
+  }
+
+  // Smart sticky: whichever column is shorter sticks in view while the taller
+  // one scrolls. Re-evaluated on load, resize and accordion/image changes.
+  (function () {
+    const gallery = document.querySelector('.pd-gallery') as HTMLElement | null;
+    const infoEl = document.querySelector('.pd-info') as HTMLElement | null;
+    if (!gallery || !infoEl) return;
+    const TOP = 88;
+    const stick = (el: HTMLElement) => { el.style.position = 'sticky'; el.style.top = TOP + 'px'; el.style.alignSelf = 'start'; };
+    const unstick = (el: HTMLElement) => { el.style.position = 'static'; el.style.top = ''; };
+
+    function apply() {
+      if (window.innerWidth <= 940) { unstick(gallery!); unstick(infoEl!); return; }
+      // measure natural heights without sticky interfering
+      unstick(gallery!); unstick(infoEl!);
+      const gh = gallery!.offsetHeight;
+      const ih = infoEl!.offsetHeight;
+      if (ih > gh) stick(gallery!); else stick(infoEl!);
+    }
+
+    let raf = 0;
+    const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(apply); };
+    apply();
+    window.addEventListener('load', schedule);
+    window.addEventListener('resize', schedule);
+    // re-measure when accordions open/close (height changes)
+    document.querySelectorAll('.pd-acc-head').forEach((h) => h.addEventListener('click', () => setTimeout(schedule, 320)));
+    // re-measure once the main image has loaded
+    const mi = document.getElementById('pdMainImg') as HTMLImageElement | null;
+    if (mi && !mi.complete) mi.addEventListener('load', schedule);
+  })();
+
+  // Accordions
+  document.querySelectorAll('.pd-acc-head').forEach((h) =>
+    h.addEventListener('click', () => h.closest('.pd-acc-item')?.classList.toggle('is-open')));
+
+  // Countdown (rolling 2-day window)
+  (function () {
+    const d = document.getElementById('pdCdD');
+    if (!d) return;
+    const end = Date.now() + 2 * 86400000 + 13 * 3600000;
+    const pad = (n: number) => (n < 10 ? '0' + n : '' + n);
+    function tick() {
+      const diff = Math.max(0, end - Date.now());
+      d!.textContent = pad(Math.floor(diff / 86400000));
+      document.getElementById('pdCdH')!.textContent = pad(Math.floor((diff % 86400000) / 3600000));
+      document.getElementById('pdCdM')!.textContent = pad(Math.floor((diff % 3600000) / 60000));
+      document.getElementById('pdCdS')!.textContent = pad(Math.floor((diff % 60000) / 1000));
+    }
+    tick(); setInterval(tick, 1000);
+  })();
+
+  // Testimonials carousel
+  (function () {
+    const track = document.getElementById('pdxTestiTrack');
+    if (!track) return;
+    const step = (dir: number) => {
+      const card = track.querySelector('.pdx-testi') as HTMLElement | null;
+      const w = card ? card.offsetWidth + 50 : track.clientWidth;
+      track.scrollBy({ left: dir * w, behavior: 'smooth' });
+    };
+    document.getElementById('pdxTestiPrev')?.addEventListener('click', () => step(-1));
+    document.getElementById('pdxTestiNext')?.addEventListener('click', () => step(1));
+  })();
+
+  // Copy share link
+  document.querySelector('[data-copy-link]')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (navigator.clipboard) navigator.clipboard.writeText(location.href);
+  });
+
+  // Copy coupon code on click
+  const coupon = document.querySelector('.pd-coupon-code') as HTMLElement | null;
+  if (coupon) {
+    coupon.setAttribute('title', 'Click to copy');
+    const code = (coupon.textContent || '').trim();
+    coupon.addEventListener('click', () => {
+      const show = () => {
+        coupon.classList.add('is-copied');
+        coupon.textContent = 'Copied ✓';
+        setTimeout(() => { coupon.classList.remove('is-copied'); coupon.textContent = code; }, 1500);
+      };
+      if (navigator.clipboard) navigator.clipboard.writeText(code).then(show, show);
+      else show();
+    });
+  }
+
+  // Related "Add" + recommended-grid add-to-cart + quick view
+  document.addEventListener('click', async (e) => {
+    const target = e.target as Element;
+    const relAdd = target.closest('.pd-related-view') as HTMLButtonElement | null;
+    if (relAdd) {
+      const card = relAdd.closest('.pd-related-card') as HTMLElement;
+      const id = card?.dataset.variantId;
+      if (!id) return;
+      if (card.dataset.price) cachePrice(id, { amount: card.dataset.price, currencyCode: card.dataset.currency || 'USD' });
+      relAdd.disabled = true; relAdd.textContent = '…';
+      await addItem(id, 1, { open: true });
+      relAdd.textContent = '✓';
+      setTimeout(() => { relAdd.disabled = false; relAdd.textContent = 'Add'; }, 1600);
+      return;
+    }
+    const qv = target.closest('[data-qv-handle]') as HTMLElement | null;
+    if (qv) { e.preventDefault(); window.dispatchEvent(new CustomEvent('quickview:open', { detail: { handle: qv.dataset.qvHandle } })); return; }
+    const add = target.closest('.bs-card .add') as HTMLButtonElement | null;
+    if (add) {
+      e.preventDefault();
+      const id = add.dataset.variantId;
+      if (!id || add.disabled) return;
+      if (add.dataset.price && add.dataset.currency) cachePrice(id, { amount: add.dataset.price, currencyCode: add.dataset.currency });
+      add.disabled = true; const o = add.innerHTML; add.innerHTML = 'Adding…';
+      await addItem(id, 1, { open: true });
+      add.innerHTML = '✓ Added!';
+      setTimeout(() => { add.disabled = false; add.innerHTML = o; }, 1600);
+    }
+  });
+
+  // Recently viewed — render from localStorage (bs-card grid), then record current
+  (function () {
+    const KEY = 'asmaz:recently-viewed';
+    const grid = document.getElementById('pdRecentGrid');
+    const section = document.getElementById('pdRecentSection');
+    let list: any[] = [];
+    try { list = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch {}
+    let cur: any = null;
+    try { cur = JSON.parse(document.getElementById('pdCurrent')?.textContent || 'null'); } catch {}
+
+    if (grid && section) {
+      const others = list.filter((p) => p && p.handle && (!cur || p.handle !== cur.handle)).slice(0, 4);
+      if (others.length) {
+        const recRating = (h: string) => (4 + ((h.length * 7) % 10) / 10).toFixed(1);
+        const recReviews = (h: string) => (80 + ((h.length * 37) % 4000)).toLocaleString('en-US');
+        grid.innerHTML = others.map((p) => {
+          const price = p.price != null ? fmt(Number(p.price), p.currency || 'USD') : '';
+          const saleOn = p.compareAt != null && Number(p.compareAt) > Number(p.price);
+          const off = saleOn ? Math.round((1 - Number(p.price) / Number(p.compareAt)) * 100) : null;
+          const old = saleOn ? `<span class="bs-card-price-old">${fmt(Number(p.compareAt), p.currency || 'USD')}</span>` : '';
+          const flag = saleOn && off != null ? `<span class="bs-flag red">−${off}%</span>` : '';
+          const img = p.image ? `<img src="${p.image}" alt="${p.title || ''}" loading="lazy">` : '';
+          const brand = p.vendor ? `<span class="bs-card-brand">${p.vendor}</span>` : '';
+          const addBtn = p.variantId
+            ? `<button class="add" data-variant-id="${p.variantId}" data-price="${p.price ?? ''}" data-currency="${p.currency || 'USD'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h9.4a2 2 0 0 0 2-1.5L23 6H6"/></svg> Add to Cart</button>`
+            : '';
+          return `<article class="bs-card"><div class="bs-card-media"><a class="media-link" href="/products/${p.handle}">${img}</a>
+            <div class="bs-card-flags">${flag}</div>
+            <div class="bs-quick"><button class="qv" data-qv-handle="${p.handle}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Quick view</button>${addBtn}</div></div>
+            <div class="bs-card-body">${brand}<h3 class="bs-card-name"><a href="/products/${p.handle}">${p.title || ''}</a></h3>
+            <div class="bs-card-rating"><span class="stars">★★★★★</span><span class="rval">${recRating(p.handle)}</span><span class="rcnt">(${recReviews(p.handle)})</span></div>
+            <div class="bs-card-prices"><div class="bs-card-price-stack"><span class="bs-card-price">${price}</span>${old}</div></div></div></article>`;
+        }).join('');
+        section.hidden = false;
+      }
+    }
+
+    // record current (front-insert, dedup, cap 12)
+    if (cur && cur.handle) {
+      const next = [cur, ...list.filter((p) => p && p.handle !== cur.handle)].slice(0, 12);
+      try { localStorage.setItem(KEY, JSON.stringify(next)); } catch {}
+    }
+  })();
+</script>

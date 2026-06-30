@@ -1,0 +1,26 @@
+---
+// Home "From the journal" row — latest 3 articles.
+import SectionHeading from '~/components/ui/SectionHeading.astro';
+import ArticleCard from '~/components/content/ArticleCard.astro';
+import type { Article } from '~/lib/shopify/types';
+
+interface Props {
+  articles: Article[];
+}
+const { articles } = Astro.props;
+---
+
+<section class="home-section home-section--mist">
+  <div class="wrap">
+    <SectionHeading
+      eyebrow="The Journal"
+      title="From the journal"
+      href="/journal"
+      ctaLabel="Read more"
+      class="home-section__head"
+    />
+    <div class="journal-grid">
+      {articles.slice(0, 3).map((a) => <ArticleCard article={a} />)}
+    </div>
+  </div>
+</section>

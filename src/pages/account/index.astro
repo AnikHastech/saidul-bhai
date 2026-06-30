@@ -1,0 +1,146 @@
+---
+// ============================================================
+//  /account — authenticated customer dashboard (profile + orders
+//  + quick actions). Redirects to login when there's no session.
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import PageHeader from '~/components/layout/PageHeader.astro';
+import Icon from '~/components/ui/Icon.astro';
+import { SITE } from '~/config/site';
+import {
+  createCustomerClient,
+  CUSTOMER_OVERVIEW_QUERY,
+  getPublicOrigin,
+  NotAuthenticatedError,
+} from '~/lib/shopify/customer';
+import type { CustomerOverview } from '~/lib/shopify/customer';
+
+export const prerender = false;
+
+const client = createCustomerClient(Astro.cookies, getPublicOrigin(Astro.request, Astro.url));
+
+if (!client.isLoggedIn()) {
+  return Astro.redirect('/account/login?return_to=/account');
+}
+
+let customer: CustomerOverview['customer'] = null;
+let error: string | null = null;
+
+try {
+  const data = await client.query<CustomerOverview>(CUSTOMER_OVERVIEW_QUERY, { first: 10 });
+  customer = data.customer;
+} catch (err) {
+  if (err instanceof NotAuthenticatedError) {
+    return Astro.redirect('/account/login?return_to=/account');
+  }
+  console.error('[account] load failed:', (err as Error).message);
+  error = (err as Error).message;
+}
+
+const fullName = [customer?.firstName, customer?.lastName].filter(Boolean).join(' ');
+const email = customer?.emailAddress?.emailAddress ?? '';
+const greeting = customer?.firstName || fullName || email.split('@')[0] || 'there';
+const orders = customer?.orders?.nodes ?? [];
+
+// Storewide USD display, regardless of the order's presentment currency.
+const fmtMoney = (m: { amount: string; currencyCode: string } | null) =>
+  m
+    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: SITE.currency }).format(Number(m.amount))
+    : '—';
+const fmtDate = (iso: string) =>
+  new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(iso));
+
+const quick = [
+  { icon: 'cart' as const, title: 'Continue shopping', sub: 'Browse the latest drop', href: '/products' },
+  { icon: 'truck' as const, title: 'Track an order', sub: 'See live delivery status', href: '#orders' },
+  { icon: 'mail' as const, title: 'Get support', sub: 'We reply within a day', href: '/pages/contact' },
+];
+---
+
+<BaseLayout title="Account" description="Manage your asmaz account, orders and details." noindex>
+  <PageHeader
+    eyebrow="My account"
+    title={`Hi, ${greeting}`}
+    crumbs={[{ label: 'Home', href: '/' }, { label: 'Account' }]}
+  />
+
+  <div class="wrap account">
+    {error && <p class="account__error">Couldn't load your account: {error}</p>}
+
+    <div class="account__topbar">
+      <h2>Overview</h2>
+      <a href="/account/logout" class="account__signout">
+        <Icon name="arrowRight" size={15} />
+        Sign out
+      </a>
+    </div>
+
+    {/* Profile cards */}
+    <div class="acc-cards">
+      <div class="acc-card">
+        <span class="eyebrow acc-card__label">Name</span>
+        <div class="acc-card__value">{fullName || '—'}</div>
+      </div>
+      <div class="acc-card">
+        <span class="eyebrow acc-card__label">Email</span>
+        <div class="acc-card__value" style="font-size:1rem;">{email || '—'}</div>
+      </div>
+      <div class="acc-card">
+        <span class="eyebrow acc-card__label">Orders</span>
+        <div class="acc-card__value">{orders.length}</div>
+        <p class="acc-card__sub">{orders.length === 0 ? 'No orders yet' : 'Lifetime on this account'}</p>
+      </div>
+    </div>
+
+    {/* Orders */}
+    <section class="acc-section" id="orders">
+      <div class="acc-section__head">
+        <h2 class="acc-section__title">Recent orders</h2>
+      </div>
+      {
+        orders.length === 0 ? (
+          <div class="acc-empty">
+            <p>You haven't placed any orders yet.</p>
+            <a href="/products" class="btn btn--news btn--md">Start shopping</a>
+          </div>
+        ) : (
+          <div class="acc-orders">
+            {orders.map((order) => (
+              <div class="acc-order">
+                <div>
+                  <div class="acc-order__name">{order.name}</div>
+                  <div class="acc-order__date">{fmtDate(order.processedAt)}</div>
+                </div>
+                <div class="acc-order__right">
+                  <span class="acc-order__status">Placed</span>
+                  <span class="acc-order__total">{fmtMoney(order.totalPrice)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      }
+    </section>
+
+    {/* Quick actions */}
+    <section class="acc-section">
+      <div class="acc-section__head">
+        <h2 class="acc-section__title">Quick actions</h2>
+      </div>
+      <div class="acc-quick">
+        {
+          quick.map((q) => (
+            <a href={q.href} class="acc-quick__card">
+              <span class="acc-quick__icon"><Icon name={q.icon} size={20} /></span>
+              <span>
+                <span class="acc-quick__title">{q.title}</span>
+                <span class="acc-quick__sub">{q.sub}</span>
+              </span>
+              <Icon name="arrowRight" size={16} class="acc-quick__go" />
+            </a>
+          ))
+        }
+      </div>
+    </section>
+  </div>
+</BaseLayout>

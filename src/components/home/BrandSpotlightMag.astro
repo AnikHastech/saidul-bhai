@@ -1,0 +1,49 @@
+---
+import type { ProductCard } from '~/lib/shopify/types';
+
+interface Props {
+  products: ProductCard[];
+}
+const { products } = Astro.props;
+
+// Extract unique vendors, fall back to a set of editorial brand names
+const vendors = [...new Set(products.map((p) => p.vendor).filter(Boolean))] as string[];
+const FALLBACK = ['AudioCraft', 'NovaBook', 'ChronoX', 'VoltCore', 'PixelSnap', 'Nebula', 'Hexa', 'Onyx', 'Nest', 'Lumi', 'Kestrel', 'Meta Tech'];
+const COUNTS = ['47', '32', '28', '64', '19', '22', '41', '17', '38', '25', '31', '53'];
+
+const brands = (vendors.length >= 6 ? vendors : FALLBACK).slice(0, 12);
+const RIBBONS: Record<number, string> = { 0: 'Featured', 4: 'New', 9: '−30%' };
+---
+
+<section class="section-brands">
+  <div class="container">
+    <div class="section-head">
+      <div class="section-head-left">
+        <span class="label-kicker">Trusted by you</span>
+        <h2>SHOP BY <em>BRAND.</em></h2>
+      </div>
+      <div class="section-head-right">
+        <a href="/products" class="see-all-link">
+          All Brands
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="brands-grid">
+      {brands.map((name, i) => {
+        const sym = name.slice(0, 2).toUpperCase();
+        const short = name.split(' ')[0];
+        const cnt = COUNTS[i % COUNTS.length];
+        const ribbon = RIBBONS[i];
+        return (
+          <a href={`/products?vendor=${encodeURIComponent(name)}`} class="brand-cell">
+            {ribbon && <span class="ribbon">{ribbon}</span>}
+            <span class="symbol">{sym}</span>
+            <span class="count">{short} · {cnt}</span>
+          </a>
+        );
+      })}
+    </div>
+  </div>
+</section>

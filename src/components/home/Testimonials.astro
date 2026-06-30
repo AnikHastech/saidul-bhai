@@ -1,0 +1,48 @@
+---
+// Static customer testimonials. Swap for a reviews app/metaobject later.
+import SectionHeading from '~/components/ui/SectionHeading.astro';
+
+const REVIEWS = [
+  {
+    quote: 'The spec sheets and honest verdicts sold me. Fast shipping, and the gear is exactly as described.',
+    name: 'Marcus T.',
+    role: 'Verified buyer',
+    initial: 'M',
+  },
+  {
+    quote: 'Best prices I found anywhere, and the flash deals are no joke. Snagged my headphones for 40% off.',
+    name: 'Priya R.',
+    role: 'Verified buyer',
+    initial: 'P',
+  },
+  {
+    quote: 'Trade-in was painless — instant credit toward a new laptop. Support actually answered in seconds.',
+    name: 'Devin K.',
+    role: 'Verified buyer',
+    initial: 'D',
+  },
+];
+---
+
+<section class="home-section home-section--mist">
+  <div class="wrap">
+    <SectionHeading eyebrow="Reviews" title="What shoppers say" class="home-section__head" />
+    <div class="testi-grid">
+      {
+        REVIEWS.map((r) => (
+          <figure class="testi-card">
+            <div class="testi-card__stars" aria-label="5 out of 5 stars">★★★★★</div>
+            <blockquote class="testi-card__quote">“{r.quote}”</blockquote>
+            <figcaption class="testi-card__author">
+              <span class="testi-card__avatar">{r.initial}</span>
+              <span>
+                <span class="testi-card__name">{r.name}</span><br />
+                <span class="testi-card__role">{r.role}</span>
+              </span>
+            </figcaption>
+          </figure>
+        ))
+      }
+    </div>
+  </div>
+</section>

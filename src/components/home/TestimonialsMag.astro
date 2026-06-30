@@ -1,0 +1,111 @@
+---
+const REVIEWS = [
+  {
+    stars: '★★★★★',
+    title: 'Replaced my expensive studio set.',
+    body: 'I was skeptical but after two weeks of daily use I\'m sold. The build quality is exceptional, performance is rock solid, and the support team actually answers. Nothing about this shopping experience disappointed me.',
+    initials: 'MR',
+    name: 'Marcus R.',
+    when: 'Verified · 2 weeks ago',
+    product: 'Best Seller',
+  },
+  {
+    stars: '★★★★★',
+    title: 'Same-day delivery actually worked.',
+    body: 'Ordered at 11am — it was in my hands by 6pm. Setup took ten minutes. I\'ve been using it for everything from work to creative projects without a single hiccup.',
+    initials: 'SK',
+    name: 'Sarah K.',
+    when: 'Verified · 5 days ago',
+    product: 'Top Pick',
+  },
+  {
+    stars: '★★★★★',
+    title: 'Customer service is unreal.',
+    body: 'My item shipped with a tiny scratch. Sent one photo, got a replacement the next day with no questions and a return label inside. This is how returns should always work.',
+    initials: 'AT',
+    name: 'Aisha T.',
+    when: 'Verified · 1 week ago',
+    product: 'Staff Choice',
+  },
+  {
+    stars: '★★★★☆',
+    title: 'Bundle saved me $180. Easy decision.',
+    body: 'The discount made it a no-brainer. Everything worked out of the box, the quality is exactly as described, and my desk setup has never looked better. Great experience start to finish.',
+    initials: 'DL',
+    name: 'Daniel L.',
+    when: 'Verified · 3 weeks ago',
+    product: 'Bundle Deal',
+  },
+];
+
+const BARS = [
+  { star: 5, pct: 82 },
+  { star: 4, pct: 12 },
+  { star: 3, pct: 4 },
+  { star: 2, pct: 1 },
+  { star: 1, pct: 1 },
+];
+---
+
+<section class="section-testimonials">
+  <div class="container">
+    <div class="test-layout">
+
+      <div class="test-left">
+        <span class="label-kicker">12,847 verified reviews</span>
+        <h2>WHAT REAL<br>SHOPPERS <em>SAY.</em></h2>
+        <p>We don't filter the negative ones. Every review is from a verified customer who bought, opened, and used the product.</p>
+
+        <div class="test-summary">
+          <div class="test-summary-row big">
+            <div class="val">
+              <span class="num">4.8</span>
+              <div>
+                <div class="stars">★★★★★</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:4px;">12,847 reviews</div>
+              </div>
+            </div>
+            <div class="val">
+              <span class="badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="11" height="11"><path d="M5 12l5 5L20 7"/></svg>
+                Verified
+              </span>
+            </div>
+          </div>
+          {BARS.map((b) => (
+            <div class="test-bars-row">
+              <span class="star">{b.star}</span>
+              <div class="bar"><div class="fill" style={`width:${b.pct}%`}></div></div>
+              <span class="pct">{b.pct}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div class="test-grid">
+        {REVIEWS.map((r) => (
+          <article class="test-card">
+            <div class="test-card-head">
+              <span class="test-stars">{r.stars}</span>
+              <span class="test-verified">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+                Verified
+              </span>
+            </div>
+            <h3 class="test-title">{r.title}</h3>
+            <p class="test-body">"{r.body}"</p>
+            <div class="test-foot">
+              <span class="test-avatar">{r.initials}</span>
+              <div class="test-author">
+                <b>{r.name}</b>
+                <span>{r.when}</span>
+              </div>
+              <span class="test-product">{r.product}</span>
+            </div>
+          </article>
+        ))}
+      </div>
+
+    </div>
+  </div>
+</section>

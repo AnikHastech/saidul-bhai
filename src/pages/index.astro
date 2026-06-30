@@ -1,0 +1,74 @@
+---
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import HeroMag from '~/components/home/HeroMag.astro';
+import MarqueeMag from '~/components/home/MarqueeMag.astro';
+import FlashDealsMag from '~/components/home/FlashDealsMag.astro';
+import CategoriesMag from '~/components/home/CategoriesMag.astro';
+import LatestLaunchesMag from '~/components/home/LatestLaunchesMag.astro';
+import BestSellersMag from '~/components/home/BestSellersMag.astro';
+import TechNewsMag from '~/components/home/TechNewsMag.astro';
+import EditorPicksMag from '~/components/home/EditorPicksMag.astro';
+import BrandSpotlightMag from '~/components/home/BrandSpotlightMag.astro';
+import BundleDealsMag from '~/components/home/BundleDealsMag.astro';
+import CompareMag from '~/components/home/CompareMag.astro';
+import TestimonialsMag from '~/components/home/TestimonialsMag.astro';
+import NewsletterMag from '~/components/home/NewsletterMag.astro';
+import QuickViewModal from '~/components/react/QuickViewModal';
+import { SITE } from '~/config/site';
+import { getProducts, getAllCollections, getArticles } from '~/lib/shopify';
+import { isOnSale } from '~/lib/utils';
+import type { Article, Collection, ProductCard } from '~/lib/shopify/types';
+
+export const prerender = false;
+
+let bestSellers: ProductCard[] = [];
+let newArrivals: ProductCard[] = [];
+let collections: Collection[] = [];
+let articles: Article[] = [];
+
+const [bestRes, newRes, colRes, artRes] = await Promise.allSettled([
+  getProducts({ pageSize: 12, sortKey: 'BEST_SELLING' }),
+  getProducts({ pageSize: 8, sortKey: 'CREATED_AT', reverse: true }),
+  getAllCollections(),
+  getArticles('news', 4),
+]);
+if (bestRes.status === 'fulfilled') bestSellers = bestRes.value.items;
+if (newRes.status === 'fulfilled') newArrivals = newRes.value.items;
+if (colRes.status === 'fulfilled') collections = colRes.value;
+if (artRes.status === 'fulfilled') articles = artRes.value;
+if (bestRes.status === 'rejected') console.error('[home] products failed:', bestRes.reason?.message);
+
+const featured = bestSellers[0] ?? null;
+
+const onSale = bestSellers.filter((p) =>
+  isOnSale(p.priceRange.minVariantPrice, p.compareAtPriceRange?.minVariantPrice ?? null),
+);
+const flashDeals = (onSale.length >= 4 ? onSale : bestSellers).slice(0, 4);
+
+const now = new Date();
+const startMs = now.getTime();
+const endOfDay = new Date(now);
+endOfDay.setHours(23, 59, 59, 999);
+let endMs = endOfDay.getTime();
+if (endMs - startMs < 60 * 60 * 1000) endMs += 24 * 60 * 60 * 1000;
+const endsAt = new Date(endMs).toISOString();
+---
+
+<BaseLayout title={undefined} description={SITE.description}>
+  <div class="mz-home">
+    <HeroMag featured={featured} collections={collections} />
+    <MarqueeMag />
+    {flashDeals.length > 0 && <FlashDealsMag products={flashDeals} endsAt={endsAt} startMs={startMs} />}
+    {collections.length > 0 && <CategoriesMag collections={collections} />}
+    {newArrivals.length > 0 && <LatestLaunchesMag products={newArrivals} />}
+    {bestSellers.length > 0 && <BestSellersMag products={bestSellers} />}
+    {articles.length >= 1 && <TechNewsMag articles={articles} />}
+    {bestSellers.length >= 3 && <EditorPicksMag products={bestSellers} />}
+    {bestSellers.length > 0 && <BrandSpotlightMag products={bestSellers} />}
+    {bestSellers.length >= 6 && <BundleDealsMag products={bestSellers} />}
+    {bestSellers.length >= 3 && <CompareMag products={bestSellers} />}
+    <TestimonialsMag />
+    <NewsletterMag />
+    <QuickViewModal client:idle />
+  </div>
+</BaseLayout>

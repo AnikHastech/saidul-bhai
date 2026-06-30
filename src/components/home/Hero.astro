@@ -1,0 +1,81 @@
+---
+// ============================================================
+//  Hero — editorial "cover": big feature with headline + CTA over
+//  a dark image, plus two sidebar cards. Uses the featured product
+//  image when available, else a local editorial fallback.
+// ============================================================
+import Button from '~/components/ui/Button.astro';
+import Icon from '~/components/ui/Icon.astro';
+import { discountPercent, isOnSale } from '~/lib/utils';
+import type { Collection, ProductCard } from '~/lib/shopify/types';
+
+interface Props {
+  featured?: ProductCard | null;
+  collections?: Collection[];
+}
+const { featured = null, collections = [] } = Astro.props;
+
+const heroImage = featured?.featuredImage?.url ?? '/images/hero.jpg';
+const heroHref = featured ? `/products/${featured.handle}` : '/products';
+
+const min = featured?.priceRange.minVariantPrice ?? null;
+const compareAt = featured?.compareAtPriceRange?.minVariantPrice ?? null;
+const off = discountPercent(min, compareAt);
+const onSale = isOnSale(min, compareAt);
+const tag = onSale && off != null ? `−${off}% TODAY` : 'NEW DROP';
+
+const sideOne = collections[0] ?? null;
+const sideOneHref = sideOne ? `/collections/${sideOne.handle}` : '/collections';
+const sideOneImg = sideOne?.image?.url ?? '/images/side-1.jpg';
+---
+
+<section class="wrap hero">
+  <div class="hero__grid">
+    <article class="hero__main">
+      <div class="hero__bg"><img src={heroImage} alt={featured?.title ?? 'Featured launch'} fetchpriority="high" /></div>
+      <div class="hero__gradient"></div>
+      <span class="hero__tag">{tag}</span>
+
+      <div class="hero__content">
+        <div class="hero__eyebrow">
+          <span class="hero__ping"></span>
+          <span class="hero__eyebrow-label">Live · Daily Drop</span>
+          <span class="hero__eyebrow-divider"></span>
+          <span class="hero__eyebrow-date">This week's cover</span>
+        </div>
+        <h1 class="hero__title">The launch<br />everyone's<br /><em>talking about.</em></h1>
+        <p class="hero__deck">
+          Hand-tested gear, honest verdicts and serious deals — the day's best tech, curated for
+          shoppers who actually read the spec sheet.
+        </p>
+        <div class="hero__cta">
+          <Button href={heroHref} variant="deal" size="lg">
+            Shop the drop
+            <Icon name="arrowRight" size={18} />
+          </Button>
+          <Button href="/collections" variant="cyber" size="lg">Browse departments</Button>
+        </div>
+      </div>
+    </article>
+
+    <div class="hero__side">
+      <a class="side-card" href={sideOneHref}>
+        <img src={sideOneImg} alt={sideOne?.title ?? 'Featured department'} loading="lazy" />
+        <div class="side-card__grad"></div>
+        <div class="side-card__body">
+          <h3 class="side-card__title">{sideOne?.title ?? 'Hand-picked'}</h3>
+          <p class="side-card__desc">Editor-approved gear, tested and ranked by our team.</p>
+          <span class="side-card__cta">Explore <Icon name="arrowRight" size={14} /></span>
+        </div>
+      </a>
+
+      <a class="side-card side-card--yellow" href="/collections/flash-deals">
+        <div class="side-card__body">
+          <h3 class="side-card__title">Flash deals are live</h3>
+          <p class="side-card__desc">Lightning prices on top gear — gone when the timer hits zero.</p>
+          <span class="side-card__cta">Shop deals <Icon name="arrowRight" size={14} /></span>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>

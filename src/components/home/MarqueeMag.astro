@@ -1,0 +1,22 @@
+---
+// Trending marquee — decorative scrolling ticker (exact port).
+// Items are repeated twice for a seamless loop.
+const items = [
+  '<span class="fire">🔥</span> TRENDING <span class="dot"></span>',
+  'AudioCraft Phantom — <b>−32%</b> <span class="dot"></span>',
+  'ChronoX Sport S2 watch <span class="dot"></span>',
+  'PixelSnap Pro Max — <b>NEW</b> <span class="dot"></span>',
+  'NovaBook 14 — <b>$899</b> <span class="dot"></span>',
+  'VoltCore Wireless Buds <span class="dot"></span>',
+  'RGB Gaming Bundle — <b>40% off</b> <span class="dot"></span>',
+  'Nest Smart Hub <span class="dot"></span>',
+  '<span class="fire">⚡</span> FLASH DEAL ends 23:47:12 <span class="dot"></span>',
+];
+---
+
+<div class="trending-marquee" aria-hidden="true">
+  <div class="marquee-track">
+    {items.map((it) => <span class="marquee-item" set:html={it} />)}
+    {items.map((it) => <span class="marquee-item" set:html={it} />)}
+  </div>
+</div>

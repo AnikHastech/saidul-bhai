@@ -1,0 +1,197 @@
+---
+// ============================================================
+//  Flash Deals — exact port. Live countdown island + 4 deal cards
+//  driven by Shopify products (image, brand, title, price, sale).
+//  Rating / sold-progress are presentational (not Shopify fields).
+// ============================================================
+import { formatMoney, discountPercent, isOnSale } from '~/lib/utils';
+import FlashCountdown from '~/components/react/FlashCountdown.tsx';
+import type { ProductCard } from '~/lib/shopify/types';
+
+interface Props {
+  products: ProductCard[];
+  endsAt: string;
+  startMs: number;
+}
+const { products, endsAt, startMs } = Astro.props;
+
+const TAGS = ['Best Seller', 'New', 'Hot', 'Limited'];
+const RVAL = ['4.8', '4.9', '4.7', '4.9'];
+const RCNT = ['(1,247)', '(842)', '(3,481)', '(218)'];
+const PROG = [78, 54, 92, 41];
+const SOLD = ['312/400', '108/200', '461/500', '32/80'];
+const FIRE = ['🔥 Almost gone', '🔥 Selling fast', '🔥 Last 39 units', '🔥 Hot launch'];
+---
+
+<section class="section-flash">
+  <div class="container">
+    <div class="flash-head">
+      <div class="flash-head-left">
+        <div class="section-head-left">
+          <span class="label-kicker">Daily Drops</span>
+          <h2>FLASH <em>DEALS.</em></h2>
+        </div>
+      </div>
+      <FlashCountdown client:load endsAt={endsAt} startMs={startMs} />
+    </div>
+
+    <div class="flash-grid">
+      {
+        products.slice(0, 4).map((p, i) => {
+          const min = p.priceRange.minVariantPrice;
+          const compareAt = p.compareAtPriceRange?.minVariantPrice ?? null;
+          const off = discountPercent(min, compareAt);
+          const onSale = isOnSale(min, compareAt);
+          const pdp = `/products/${p.handle}`;
+          return (
+            <article class="deal-card">
+              <div class="deal-card-media">
+                <a href={pdp}>
+                  {p.featuredImage ? (
+                    <img src={p.featuredImage.url} alt={p.featuredImage.altText ?? p.title} loading="lazy" />
+                  ) : null}
+                </a>
+                <div class="deal-card-badges">
+                  {onSale && off != null && <span class="deal-pct">−{off}%</span>}
+                  <span class="deal-tag">{TAGS[i % TAGS.length]}</span>
+                </div>
+                <div class="deal-card-actions">
+                  <button
+                    class="deal-icon-btn"
+                    aria-label="Wishlist"
+                    data-wish-id={p.id}
+                    data-wish-handle={p.handle}
+                    data-wish-title={p.title}
+                    data-wish-img={p.featuredImage?.url ?? ''}
+                    data-wish-price={min.amount}
+                    data-wish-currency={min.currencyCode}
+                  ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg></button>
+                  <button class="deal-icon-btn" aria-label="Quick view" data-qv-handle={p.handle}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg></button>
+                  <button
+                    class="deal-icon-btn"
+                    aria-label="Compare"
+                    data-cmp-id={p.id}
+                    data-cmp-handle={p.handle}
+                    data-cmp-title={p.title}
+                    data-cmp-img={p.featuredImage?.url ?? ''}
+                    data-cmp-price={min.amount}
+                    data-cmp-currency={min.currencyCode}
+                  ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M3 12h12M3 18h6" /></svg></button>
+                </div>
+                <button class="deal-quick-add" data-variant-id={p.firstVariantId} data-price={min.amount} data-currency={min.currencyCode}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h9.4a2 2 0 0 0 2-1.5L23 6H6" /></svg>
+                  Add to Cart
+                </button>
+              </div>
+              <div class="deal-card-body">
+                {p.vendor && <span class="deal-brand">{p.vendor}</span>}
+                <h3 class="deal-name"><a href={`/products/${p.handle}`}>{p.title}</a></h3>
+                <div class="deal-rating"><span class="stars">★★★★★</span> <span class="rval">{RVAL[i % RVAL.length]}</span> <span>{RCNT[i % RCNT.length]}</span></div>
+                <div class="deal-price-row">
+                  <span class="deal-price">{formatMoney(min.amount, min.currencyCode)}</span>
+                  {onSale && compareAt && <span class="deal-price-old">{formatMoney(compareAt.amount, compareAt.currencyCode)}</span>}
+                </div>
+                <div class="deal-progress">
+                  <div class="deal-progress-bar">
+                    <div class="deal-progress-fill" style={`width: ${PROG[i % PROG.length]}%;`}></div>
+                  </div>
+                  <div class="deal-progress-text"><span>Sold: <b>{SOLD[i % SOLD.length]}</b></span><span class="fire">{FIRE[i % FIRE.length]}</span></div>
+                </div>
+              </div>
+            </article>
+          );
+        })
+      }
+    </div>
+  </div>
+</section>
+
+<script>
+  import { addItem } from '~/stores/cart';
+  import { wishlist } from '~/stores/wishlist';
+  import { compare, COMPARE_CAP } from '~/stores/compare';
+  import { cachePrice } from '~/stores/price-cache';
+
+  wishlist.init();
+  compare.init();
+
+  const CART_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h9.4a2 2 0 0 0 2-1.5L23 6H6"/></svg>`;
+  const HEART_EMPTY = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>`;
+  const HEART_FULL  = `<svg viewBox="0 0 24 24" fill="#e8192c" stroke="#e8192c" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>`;
+
+  document.querySelector('.flash-grid')?.addEventListener('click', async (e) => {
+    const target = e.target as Element;
+
+    // ── Wishlist ─────────────────────────────────────────────
+    const wishBtn = target.closest('[data-wish-id]') as HTMLButtonElement | null;
+    if (wishBtn) {
+      e.preventDefault();
+      const product = {
+        id: wishBtn.dataset.wishId!,
+        handle: wishBtn.dataset.wishHandle!,
+        title: wishBtn.dataset.wishTitle!,
+        image: wishBtn.dataset.wishImg || null,
+        price: wishBtn.dataset.wishPrice ?? null,
+        currency: wishBtn.dataset.wishCurrency ?? null,
+      };
+      const added = wishlist.toggle(product);
+      wishBtn.innerHTML = added ? HEART_FULL : HEART_EMPTY;
+      wishBtn.setAttribute('aria-pressed', String(added));
+      return;
+    }
+
+    // ── Compare ──────────────────────────────────────────────
+    const cmpBtn = target.closest('[data-cmp-id]') as HTMLButtonElement | null;
+    if (cmpBtn) {
+      e.preventDefault();
+      const product = {
+        id: cmpBtn.dataset.cmpId!,
+        handle: cmpBtn.dataset.cmpHandle!,
+        title: cmpBtn.dataset.cmpTitle!,
+        image: cmpBtn.dataset.cmpImg || null,
+        price: cmpBtn.dataset.cmpPrice ?? null,
+        currency: cmpBtn.dataset.cmpCurrency ?? null,
+      };
+      const active = compare.has(product.id);
+      if (active) {
+        compare.remove(product.id);
+        cmpBtn.classList.remove('is-active');
+        cmpBtn.title = 'Add to compare';
+      } else if (compare.$items.get().length < COMPARE_CAP) {
+        compare.add(product);
+        cmpBtn.classList.add('is-active');
+        cmpBtn.title = 'Remove from compare';
+      } else {
+        cmpBtn.title = `Compare full (${COMPARE_CAP} max)`;
+      }
+      return;
+    }
+
+    // ── Quick view ───────────────────────────────────────────
+    const qvBtn = target.closest('[data-qv-handle]') as HTMLElement | null;
+    if (qvBtn) {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('quickview:open', { detail: { handle: qvBtn.dataset.qvHandle } }));
+      return;
+    }
+
+    // ── Add to Cart ──────────────────────────────────────────
+    const addBtn = target.closest('.deal-quick-add') as HTMLButtonElement | null;
+    if (!addBtn) return;
+    const variantId = addBtn.dataset.variantId ?? '';
+    if (!variantId || addBtn.disabled) return;
+    e.preventDefault();
+
+    if (addBtn.dataset.price && addBtn.dataset.currency)
+      cachePrice(variantId, { amount: addBtn.dataset.price, currencyCode: addBtn.dataset.currency });
+
+    addBtn.disabled = true;
+    addBtn.innerHTML = 'Adding…';
+    await addItem(variantId, 1, { open: true });
+    addBtn.innerHTML = '✓ Added!';
+    setTimeout(() => {
+      addBtn.disabled = false;
+      addBtn.innerHTML = `${CART_SVG} Add to Cart`;
+    }, 2000);
+  });
+</script>

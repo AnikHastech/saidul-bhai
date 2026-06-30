@@ -1,0 +1,71 @@
+---
+// ============================================================
+//  ActiveFilters — chips for the currently-applied facets, each
+//  removable. Labels are resolved from the available filter set;
+//  a price selection becomes its own chip. Renders nothing when
+//  no filters are active.
+// ============================================================
+import type { CollectionFilter } from '~/lib/shopify/types';
+import { toggleFilterHref, clearFiltersHref } from '~/lib/filters';
+import Icon from '~/components/ui/Icon.astro';
+
+interface Props {
+  filters: CollectionFilter[];
+  url: URL;
+}
+const { filters, url } = Astro.props;
+
+// Map normalized input JSON → human label.
+const labelByInput = new Map<string, string>();
+for (const group of filters) {
+  for (const v of group.values) {
+    try {
+      labelByInput.set(JSON.stringify(JSON.parse(v.input)), v.label);
+    } catch {
+      labelByInput.set(v.input, v.label);
+    }
+  }
+}
+
+interface Chip {
+  label: string;
+  href: string; // removal href
+}
+const chips: Chip[] = [];
+for (const raw of url.searchParams.getAll('f')) {
+  let key = raw;
+  try {
+    key = JSON.stringify(JSON.parse(raw));
+  } catch {
+    /* keep raw */
+  }
+  chips.push({ label: labelByInput.get(key) ?? 'Filter', href: toggleFilterHref(url, raw) });
+}
+
+const pMin = url.searchParams.get('price_min');
+const pMax = url.searchParams.get('price_max');
+if (pMin || pMax) {
+  const priceParams = new URLSearchParams(url.search);
+  for (const k of ['price_min', 'price_max', 'after', 'before']) priceParams.delete(k);
+  const qs = priceParams.toString();
+  chips.push({
+    label: `Price ${pMin ? `$${pMin}` : '$0'}–${pMax ? `$${pMax}` : '∞'}`,
+    href: `${url.pathname}${qs ? `?${qs}` : ''}`,
+  });
+}
+---
+
+{
+  chips.length > 0 && (
+    <div class="active-filters">
+      <span class="active-filters__label">Filtered by</span>
+      {chips.map((c) => (
+        <a href={c.href} class="active-filters__chip">
+          {c.label}
+          <Icon name="close" size={13} strokeWidth={2.2} />
+        </a>
+      ))}
+      <a href={clearFiltersHref(url)} class="active-filters__clear">Clear all</a>
+    </div>
+  )
+}

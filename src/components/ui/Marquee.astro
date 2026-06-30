@@ -1,0 +1,21 @@
+---
+// ============================================================
+//  Marquee — seamless horizontal ticker. Renders the slotted
+//  content twice so the CSS loop (.marquee__track → -50%) is
+//  gap-free. Pauses on hover; disabled under reduced-motion.
+// ============================================================
+import { cn } from '~/lib/utils';
+
+interface Props {
+  class?: string;
+  ariaLabel?: string;
+}
+const { class: className, ariaLabel = 'Highlights' } = Astro.props;
+---
+
+<div class={cn('marquee', className)} aria-label={ariaLabel}>
+  <div class="marquee__track">
+    <div class="marquee__group"><slot /></div>
+    <div class="marquee__group" aria-hidden="true"><slot /></div>
+  </div>
+</div>

@@ -1,0 +1,102 @@
+---
+// ============================================================
+//  Shop — the full catalogue rendered through the shared
+//  ShopExplorer (masthead · Newsstand Control Deck filter · grid ·
+//  popular search). ALL products, categories, brands, colours,
+//  prices and filters are loaded dynamically from Shopify; the
+//  client-side filter/sort/density logic lives in ShopExplorer.
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import ShopExplorer from '~/components/shop/ShopExplorer.astro';
+import { getProducts, getCollection } from '~/lib/shopify';
+import type { ProductCard } from '~/lib/shopify/types';
+
+export const prerender = false;
+
+// --- Category sections sourced from real (populated) Shopify collections ---
+const CATS = [
+  { key: 'mobile', label: 'Mobile', handle: 'phone-tablet' },
+  { key: 'laptops', label: 'Laptops', handle: 'pc-laptop' },
+  { key: 'accessories', label: 'Accessories', handle: 'accessories' },
+  { key: 'kitchen', label: 'Kitchen', handle: 'kitchen-appliances' },
+  { key: 'appliances', label: 'Appliances', handle: 'home-appliances-1' },
+  { key: 'gaming', label: 'Gaming', handle: 'for-gamers' },
+] as const;
+
+// Fetch the master catalogue, the newest set (for the "newest" sort + NEW flag),
+// and every category collection — all in parallel.
+const [masterRes, newestRes, ...catRes] = await Promise.allSettled([
+  getProducts({ pageSize: 100, sortKey: 'BEST_SELLING' }),
+  getProducts({ pageSize: 60, sortKey: 'CREATED_AT', reverse: true }),
+  ...CATS.map((c) => getCollection({ handle: c.handle, pageSize: 100 })),
+]);
+
+let master: ProductCard[] = masterRes.status === 'fulfilled' ? masterRes.value.items : [];
+const newest = newestRes.status === 'fulfilled' ? newestRes.value.items : [];
+
+// productId → set of category keys it belongs to
+const catMembers = new Map<string, Set<string>>();
+CATS.forEach((c, i) => {
+  const r = catRes[i];
+  const items = r.status === 'fulfilled' && r.value ? r.value.products.items : [];
+  // Fold any category products missing from the best-selling page into master.
+  for (const p of items) if (!master.some((m) => m.id === p.id)) master.push(p);
+  for (const p of items) {
+    if (!catMembers.has(p.id)) catMembers.set(p.id, new Set());
+    catMembers.get(p.id)!.add(c.key);
+  }
+});
+
+const newestRank = new Map<string, number>();
+newest.forEach((p, i) => newestRank.set(p.id, i));
+
+const sections = CATS.map((c) => ({ key: c.key, label: c.label }));
+const catKeysOf = (p: ProductCard) => [...(catMembers.get(p.id) ?? [])];
+
+const brands = [...new Set(master.map((p) => (p.vendor ?? '').trim()).filter(Boolean))];
+const totalProducts = master.length;
+
+const stats = [
+  { value: totalProducts.toLocaleString('en-US'), label: 'Products' },
+  { value: String(brands.length), label: 'Brands' },
+  { value: String(CATS.length), label: 'Categories' },
+  { value: 'Daily', label: 'Restocks' },
+];
+
+// Popular-search chips: category labels + individual products, each with a
+// real image. Enough entries to overflow so the carousel arrows are useful.
+const catChips = CATS.map((c) => {
+  const img = master.find((p) => catMembers.get(p.id)?.has(c.key))?.featuredImage?.url
+    ?? master[0]?.featuredImage?.url
+    ?? '';
+  return { label: c.label, url: `/collections/${c.handle}`, img };
+}).filter((x) => x.img);
+const productChips = master
+  .filter((p) => p.featuredImage)
+  .slice(0, 10)
+  .map((p) => ({ label: p.title, url: `/products/${p.handle}`, img: p.featuredImage!.url }));
+const popular = [...catChips, ...productChips];
+---
+
+<BaseLayout title="Shop" description="Every gadget we stock, hand-tested and spec-checked.">
+  <ShopExplorer
+    products={master}
+    sections={sections}
+    catKeysOf={catKeysOf}
+    newRank={newestRank}
+    kicker="The Catalogue · Issue 247"
+    titleLead="SHOP"
+    titleEm="EVERYTHING."
+    deck="Every gadget we stock, hand-tested and spec-checked. Use the control deck below to cut straight to what you're after."
+    stats={stats}
+    popular={popular}
+  >
+    <div slot="breadcrumb" class="shop-crumb">
+      <div class="container shop-crumb-inner">
+        <a href="/">Home</a>
+        <span class="sep">/</span>
+        <span class="cur">Shop</span>
+      </div>
+    </div>
+  </ShopExplorer>
+</BaseLayout>

@@ -1,0 +1,248 @@
+---
+// ============================================================
+//  BaseLayout — html shell shared by every page. Owns the global
+//  magazine chrome (announcement · header · footer), SEO/OG meta,
+//  and mounts the global interactive islands once (cart + side
+//  drawers + mobile nav).
+// ============================================================
+import '~/styles/global.css';
+import { SITE, FALLBACK_NAV } from '~/config/site';
+import { getAllCollections, getCollection, getAvailableCurrencies } from '~/lib/shopify';
+import type { ProductCard } from '~/lib/shopify/types';
+import Announcement from '~/components/layout/Announcement.astro';
+import Header from '~/components/layout/Header.astro';
+import Footer from '~/components/layout/Footer.astro';
+import InstagramMag from '~/components/home/InstagramMag.astro';
+import BackToTop from '~/components/layout/BackToTop.astro';
+import CartDrawer from '~/components/react/CartDrawer.tsx';
+import AccountDrawer from '~/components/react/AccountDrawer.tsx';
+import WishlistDrawer from '~/components/react/WishlistDrawer.tsx';
+import MobileMenu from '~/components/react/MobileMenu.tsx';
+import BottomNav from '~/components/react/BottomNav.tsx';
+import CompareTray from '~/components/react/CompareTray.tsx';
+import NewsletterPopup from '~/components/react/NewsletterPopup.tsx';
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  imageAlt?: string;
+  /** OG/Twitter object type; PDP passes "product", articles "article". */
+  type?: 'website' | 'product' | 'article';
+  /** Emit <meta robots=noindex> for thin/functional pages. */
+  noindex?: boolean;
+  /** Extra schema.org JSON-LD merged with the site-wide graph. */
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+  noFooter?: boolean;
+}
+
+const {
+  title,
+  description = SITE.description,
+  image,
+  imageAlt,
+  type = 'website',
+  noindex = false,
+  jsonLd: pageJsonLd,
+  noFooter = false,
+} = Astro.props;
+
+const pageTitle = title ? `${title} · ${SITE.name}` : `${SITE.name} — ${SITE.tagline}`;
+const canonical = new URL(Astro.url.pathname, Astro.url.origin).href;
+const pathname = Astro.url.pathname;
+const origin = Astro.url.origin;
+// Always resolve to an absolute social-share image (per-page or site default).
+const ogImage = new URL(image ?? SITE.ogImage, origin).href;
+
+// Navigation derived from the store's real collections (not the Shopify
+// "menu" resource). Drives the footer Categories column, the departments
+// drawer and the search dropdown. The header department bar intentionally
+// stays on the config FALLBACK_NAV. Falls back to config when unavailable.
+let collectionNav: { title: string; url: string }[] = [];
+try {
+  const cols = await getAllCollections();
+  collectionNav = cols.map((c) => ({ title: c.title, url: `/collections/${c.handle}` }));
+} catch (err) {
+  console.error('[nav] collections load failed:', (err as Error).message);
+}
+
+// Currencies the store sells in (for the top-bar selector). Prefer the live
+// Shopify Markets list; fall back to the configured list when unavailable. The
+// buyer's chosen market comes from the cookie (middleware → Astro.locals.country).
+const liveCurrencies = await getAvailableCurrencies();
+const currencies = liveCurrencies.length ? liveCurrencies : [...SITE.currencies];
+const currentCountry = Astro.locals.country;
+// Search category options carry the collection handle so the search bar can
+// scope a query to that collection. "All Categories" has no handle.
+const searchCats: readonly { title: string; handle?: string }[] = collectionNav.length
+  ? [
+      { title: 'All Categories' },
+      ...collectionNav.slice(0, 12).map((c) => ({
+        title: c.title,
+        handle: c.url.replace('/collections/', ''),
+      })),
+    ]
+  : SITE.searchCategories.map((t) => ({ title: t }));
+
+// Live products for the header nav: megamenus show a grid, dropdowns a short
+// list — both sourced from the linked collection. Fetched in parallel; a
+// failed fetch just leaves that panel without products.
+const navProducts: Record<string, ProductCard[]> = {};
+await Promise.allSettled(
+  FALLBACK_NAV.filter((n) => (n.menu === 'mega' || n.menu === 'dropdown') && n.collection).map(
+    async (n) => {
+      const col = await getCollection({ handle: n.collection!, pageSize: n.menu === 'mega' ? 8 : 6 });
+      if (col?.products.items.length) navProducts[n.collection!] = col.products.items;
+    },
+  ),
+);
+
+// Site-wide structured data (Organization + WebSite search action), plus any
+// page-specific graph (Product, BreadcrumbList, Article…) passed via `jsonLd`.
+const siteJsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: SITE.name,
+    url: origin,
+    logo: `${origin}/favicon.svg`,
+    sameAs: SITE.social.map((s) => s.href),
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE.name,
+    url: origin,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: `${origin}/search?q={search_term_string}`,
+      'query-input': 'required name=search_term_string',
+    },
+  },
+];
+const structuredData = [
+  ...siteJsonLd,
+  ...(pageJsonLd ? (Array.isArray(pageJsonLd) ? pageJsonLd : [pageJsonLd]) : []),
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+
+    {/* Fonts — Barlow Condensed (headlines) · Inter (UI/body) */}
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap"
+    />
+
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="theme-color" content="#050505" />
+    {noindex && <meta name="robots" content="noindex, follow" />}
+
+    {/* Open Graph / Twitter */}
+    <meta property="og:type" content={type} />
+    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:alt" content={imageAlt ?? pageTitle} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    {/* Structured data */}
+    <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+
+    {/* Pre-paint: apply saved density + arm scroll-reveal (motion-safe). */}
+    <script is:inline>
+      try {
+        var d = localStorage.getItem('asmaz:density');
+        if (d) document.documentElement.dataset.density = d;
+      } catch (e) {}
+      try {
+        if (
+          window.matchMedia &&
+          !window.matchMedia('(prefers-reduced-motion: reduce)').matches &&
+          'IntersectionObserver' in window
+        ) {
+          document.documentElement.classList.add('js-reveal');
+        }
+      } catch (e) {}
+    </script>
+
+    <slot name="head" />
+  </head>
+
+  <body class="page-shell">
+    <a href="#main" class="skip-link">Skip to content</a>
+
+    <Announcement currencies={currencies} country={currentCountry} />
+    <Header searchCategories={searchCats} navProducts={navProducts} />
+
+    <main id="main" class="page-main">
+      <slot />
+    </main>
+
+    {/* Sitewide Instagram "Shop the 'Gram" — common to every page, above the
+        footer. Its CSS is scoped to .mz-home, hence the wrapper. */}
+    {!noFooter && (
+      <div class="mz-home">
+        <InstagramMag />
+      </div>
+    )}
+
+    {!noFooter && <Footer categories={collectionNav} />}
+
+    <BackToTop />
+
+    {/* Global interactive islands (mounted once) */}
+    <CartDrawer client:load />
+    <AccountDrawer client:idle />
+    <WishlistDrawer client:idle />
+    <MobileMenu client:idle departments={collectionNav} navProducts={navProducts} />
+    <CompareTray client:idle />
+    <BottomNav client:load pathname={pathname} />
+    <NewsletterPopup client:idle />
+
+    {/* Scroll-reveal: reveal .reveal elements as they enter view. */}
+    <script is:inline>
+      (function () {
+        if (!document.documentElement.classList.contains('js-reveal')) return;
+        var io = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (e) {
+              if (e.isIntersecting) {
+                e.target.classList.add('is-revealed');
+                io.unobserve(e.target);
+              }
+            });
+          },
+          { rootMargin: '0px 0px -8% 0px', threshold: 0.05 },
+        );
+        document.querySelectorAll('.reveal').forEach(function (el) {
+          io.observe(el);
+        });
+        // Safety: reveal anything still hidden shortly after load.
+        window.addEventListener('load', function () {
+          setTimeout(function () {
+            document.querySelectorAll('.reveal:not(.is-revealed)').forEach(function (el) {
+              el.classList.add('is-revealed');
+            });
+          }, 1500);
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,45 @@
+---
+// ============================================================
+//  Collections index — every collection as a card.
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import PageHeader from '~/components/layout/PageHeader.astro';
+import CollectionCard from '~/components/collection/CollectionCard.astro';
+import { getAllCollections } from '~/lib/shopify';
+import type { Collection } from '~/lib/shopify/types';
+
+export const prerender = false;
+
+let collections: Collection[] = [];
+let loadError = false;
+try {
+  collections = await getAllCollections();
+} catch (err) {
+  console.error('[collections] load failed:', (err as Error).message);
+  loadError = true;
+}
+---
+
+<BaseLayout title="Departments" description="Shop the full range by department.">
+  <PageHeader
+    eyebrow="Browse"
+    title="Departments"
+    description="Curated edits across audio, mobile, laptops, gaming and more."
+    crumbs={[{ label: 'Home', href: '/' }, { label: 'Departments' }]}
+  />
+  <div class="wrap section">
+    {
+      collections.length > 0 ? (
+        <div class="collection-grid">
+          {collections.map((c) => <CollectionCard collection={c} class="reveal" />)}
+        </div>
+      ) : (
+        <p class="empty-state__text" style="text-align:center;color:var(--graphite);padding-block:64px;">
+          {loadError
+            ? 'Departments are unavailable right now.'
+            : 'No collections yet. Connect your Shopify store to populate departments.'}
+        </p>
+      )
+    }
+  </div>
+</BaseLayout>

@@ -1,0 +1,42 @@
+---
+// ============================================================
+//  SectionHeading — editorial section header: signal-red kicker
+//  rule + eyebrow, big condensed title, optional "view all" link.
+// ============================================================
+import Icon from './Icon.astro';
+import { cn } from '~/lib/utils';
+
+interface Props {
+  eyebrow?: string;
+  title: string;
+  href?: string;
+  ctaLabel?: string;
+  align?: 'left' | 'center';
+  class?: string;
+}
+
+const {
+  eyebrow,
+  title,
+  href,
+  ctaLabel = 'View all',
+  align = 'left',
+  class: className,
+} = Astro.props;
+---
+
+<div class={cn('section-heading', align === 'center' && 'section-heading--center', className)}>
+  <div>
+    {eyebrow && <span class="eyebrow kicker">{eyebrow}</span>}
+    <h2 class="masthead section-heading__title">{title}</h2>
+  </div>
+
+  {
+    href && (
+      <a href={href} class="section-heading__link">
+        {ctaLabel}
+        <Icon name="arrowRight" size={15} />
+      </a>
+    )
+  }
+</div>

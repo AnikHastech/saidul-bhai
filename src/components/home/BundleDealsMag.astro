@@ -1,0 +1,279 @@
+---
+import { formatMoney } from '~/lib/utils';
+import type { ProductCard } from '~/lib/shopify/types';
+
+interface Props {
+  products: ProductCard[];
+}
+const { products } = Astro.props;
+
+// Extra discount applied when buying as a bundle (display only)
+const BUNDLE_EXTRA_PCT = 0.15;
+
+const BUNDLE_NAMES = ['The Creator Set', 'The Gamer Kit', 'The Smart Home'];
+const BUNDLE_NUMS  = ['01', '02', '03'];
+
+// Prefer products that have a real variant choice so every bundle slot
+// gets a dropdown; single-variant products sink to the end (likely unused).
+const hasChoice = (p: ProductCard) => (p.cardVariants?.length ?? 0) > 1;
+const ordered = [
+  ...products.filter(hasChoice),
+  ...products.filter((p) => !hasChoice(p)),
+];
+
+const bundles = BUNDLE_NAMES.map((name, bi) => {
+  const items = ordered.slice(bi * 3, bi * 3 + 3);
+  if (items.length < 2) return null;
+  const currency = items[0]?.priceRange.minVariantPrice.currencyCode ?? 'USD';
+  return { num: BUNDLE_NUMS[bi], name, items, currency };
+}).filter(Boolean) as { num: string; name: string; items: ProductCard[]; currency: string }[];
+
+// Label a variant by its option values (skip Shopify's default placeholder).
+const variantLabel = (v: ProductCard['cardVariants'][number]): string => {
+  const parts = (v.selectedOptions ?? [])
+    .filter((o) => o.value && o.value !== 'Default Title')
+    .map((o) => o.value);
+  return parts.length ? parts.join(' · ') : (v.title || 'Default');
+};
+
+const checkSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l5 5L20 7"/></svg>`;
+const arrowSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
+const cartSvg  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h9.4a2 2 0 0 0 2-1.5L23 6H6"/></svg>`;
+---
+
+<section class="section-bundles" data-bundle-extra-pct={BUNDLE_EXTRA_PCT}>
+  <div class="container">
+    <div class="section-head">
+      <div class="section-head-left">
+        <span class="label-kicker">Save 25–40%</span>
+        <h2>BETTER <em>TOGETHER.</em></h2>
+      </div>
+      <div class="section-head-right">
+        <a href="/products" class="see-all-link">
+          All Bundles
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="bundles-grid">
+      {bundles.map((b) => (
+        <article class="bundle-card">
+          <div class="bundle-head">
+            <div class="bundle-name">
+              <span>Bundle {b.num}</span>
+              {b.name}
+            </div>
+            <div class="bundle-save">
+              <b>Save</b><span data-bundle-save-pct>0%</span>
+            </div>
+          </div>
+
+          <div class="bundle-items">
+            {b.items.map((p, i) => (
+              <>
+                {i > 0 && <span class="bundle-plus">+</span>}
+                <div class="bundle-item" data-thumb-index={i}>
+                  {p.featuredImage && (
+                    <img src={p.featuredImage.url} alt={p.featuredImage.altText ?? p.title} loading="lazy" />
+                  )}
+                </div>
+              </>
+            ))}
+          </div>
+
+          <div class="bundle-list">
+            {b.items.map((p, i) => {
+              const min = p.priceRange.minVariantPrice;
+              const ca  = p.compareAtPriceRange?.minVariantPrice ?? null;
+              const compareAmt = ca && parseFloat(ca.amount) > parseFloat(min.amount) ? ca.amount : '';
+              const variants = p.cardVariants ?? [];
+              const hasChoices = variants.length > 1;
+
+              return (
+                <div
+                  class="bundle-list-item"
+                  data-product-index={i}
+                  data-variant-id={p.firstVariantId}
+                  data-price={min.amount}
+                  data-compare={compareAmt}
+                  data-currency={min.currencyCode}
+                >
+                  <div class="bundle-row-main">
+                    <span class="lbl">
+                      <Fragment set:html={checkSvg} />
+                      <a href={`/products/${p.handle}`} class="bundle-title-link">{p.title}</a>
+                    </span>
+                    <span class="val">
+                      <span class="now">{formatMoney(min.amount, min.currencyCode)}</span>
+                      {compareAmt && <s>{formatMoney(compareAmt, min.currencyCode)}</s>}
+                    </span>
+                  </div>
+
+                  {hasChoices && (
+                    <div class="bundle-variant">
+                      <select class="bundle-select" aria-label={`Choose option for ${p.title}`}>
+                        {variants.map((v, vi) => (
+                          <option
+                            value={v.id}
+                            selected={vi === 0}
+                            disabled={v.availableForSale === false}
+                            data-price={v.price.amount}
+                            data-currency={v.price.currencyCode}
+                            data-img={v.image?.url ?? ''}
+                          >
+                            {variantLabel(v)}
+                            {v.availableForSale === false ? ' — Sold out' : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <svg class="bundle-select-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            <div class="bundle-list-item bundle-list-discount">
+              <div class="bundle-row-main">
+                <span class="lbl">
+                  <Fragment set:html={checkSvg} />
+                  Bundle discount (15% off)
+                </span>
+                <span class="val discount" data-bundle-discount>—</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bundle-foot">
+            <div class="bundle-total">
+              <span class="lbl">Bundle Price</span>
+              <span class="pr">
+                <span class="now" data-bundle-now>—</span>
+                <span class="was" data-bundle-was>—</span>
+              </span>
+            </div>
+            <button class="bundle-cta">
+              <Fragment set:html={cartSvg} />
+              Add Bundle
+              <Fragment set:html={arrowSvg} />
+            </button>
+          </div>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<script>
+  import { addItem } from '~/stores/cart';
+  import { cachePrice } from '~/stores/price-cache';
+
+  const ARROW = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
+  const CART  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h9.4a2 2 0 0 0 2-1.5L23 6H6"/></svg>`;
+
+  const section = document.querySelector('.section-bundles') as HTMLElement | null;
+  const EXTRA = parseFloat(section?.dataset.bundleExtraPct ?? '0.15');
+
+  const fmt = (amount: number, currency: string) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+
+  // Recompute every price/total/badge for one bundle card.
+  function recalc(card: HTMLElement) {
+    const rows = Array.from(
+      card.querySelectorAll('.bundle-list-item[data-product-index]'),
+    ) as HTMLElement[];
+    if (!rows.length) return;
+    const currency = rows[0].dataset.currency ?? 'USD';
+
+    let currentTotal = 0;
+    let regularTotal = 0;
+    rows.forEach((row) => {
+      const price = parseFloat(row.dataset.price ?? '0');
+      const compare = parseFloat(row.dataset.compare ?? '') || 0;
+      currentTotal += price;
+      regularTotal += compare > price ? compare : price;
+    });
+
+    const bundleTotal = currentTotal * (1 - EXTRA);
+    const saving = regularTotal - bundleTotal;
+    const savePct = regularTotal > 0 ? Math.round((saving / regularTotal) * 100) : 0;
+    const discountAmt = currentTotal * EXTRA;
+
+    const set = (sel: string, txt: string) => {
+      const el = card.querySelector(sel);
+      if (el) el.textContent = txt;
+    };
+    set('[data-bundle-now]', fmt(bundleTotal, currency));
+    set('[data-bundle-was]', fmt(regularTotal, currency));
+    set('[data-bundle-save-pct]', `${savePct}%`);
+    set('[data-bundle-discount]', `−${fmt(discountAmt, currency)}`);
+  }
+
+  // Init each card on load.
+  document.querySelectorAll<HTMLElement>('.bundle-card').forEach(recalc);
+
+  // ── Variant <select> change ────────────────────────────────
+  document.querySelectorAll<HTMLSelectElement>('.bundle-select').forEach((sel) => {
+    sel.addEventListener('change', () => {
+      const opt = sel.selectedOptions[0];
+      if (!opt) return;
+      const row  = sel.closest('.bundle-list-item') as HTMLElement;
+      const card = sel.closest('.bundle-card') as HTMLElement;
+
+      // Update the row's selected variant + price
+      row.dataset.variantId = opt.value;
+      if (opt.dataset.price) row.dataset.price = opt.dataset.price;
+      if (opt.dataset.currency) row.dataset.currency = opt.dataset.currency;
+
+      const nowEl = row.querySelector('.val .now') as HTMLElement | null;
+      if (nowEl && opt.dataset.price && opt.dataset.currency)
+        nowEl.textContent = fmt(parseFloat(opt.dataset.price), opt.dataset.currency);
+
+      // Swap the matching top thumbnail
+      const idx = row.dataset.productIndex;
+      if (opt.dataset.img && idx != null) {
+        const thumb = card.querySelector(`.bundle-item[data-thumb-index="${idx}"] img`) as HTMLImageElement | null;
+        if (thumb) thumb.src = opt.dataset.img;
+      }
+
+      recalc(card);
+    });
+  });
+
+  // ── Add Bundle ─────────────────────────────────────────────
+  document.querySelector('.bundles-grid')?.addEventListener('click', async (e) => {
+    const btn = (e.target as Element).closest('.bundle-cta') as HTMLButtonElement | null;
+    if (!btn || btn.disabled) return;
+    e.preventDefault();
+
+    const card = btn.closest('.bundle-card') as HTMLElement;
+    const rows = Array.from(
+      card.querySelectorAll('.bundle-list-item[data-product-index]'),
+    ) as HTMLElement[];
+
+    const picks = rows
+      .map((r) => ({
+        id: r.dataset.variantId ?? '',
+        price: r.dataset.price ?? '',
+        currency: r.dataset.currency ?? 'USD',
+      }))
+      .filter((p) => p.id);
+    if (!picks.length) return;
+
+    btn.disabled = true;
+    btn.innerHTML = 'Adding bundle…';
+
+    for (let i = 0; i < picks.length; i++) {
+      if (picks[i].price)
+        cachePrice(picks[i].id, { amount: picks[i].price, currencyCode: picks[i].currency });
+      await addItem(picks[i].id, 1, { open: i === picks.length - 1 });
+    }
+
+    btn.innerHTML = `${CART} ✓ Bundle Added!`;
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = `${CART} Add Bundle ${ARROW}`;
+    }, 2500);
+  });
+</script>

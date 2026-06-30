@@ -1,0 +1,175 @@
+---
+// ============================================================
+//  Hero — exact port of magazine-style-html hero. Featured
+//  product image/price/link come from Shopify; the editorial
+//  copy + side cards stay as designed (side cards link to live
+//  collections).
+// ============================================================
+import { formatMoney, discountPercent, isOnSale } from '~/lib/utils';
+import type { Collection, ProductCard } from '~/lib/shopify/types';
+
+interface Props {
+  featured?: ProductCard | null;
+  collections?: Collection[];
+}
+const { featured = null, collections = [] } = Astro.props;
+
+const min = featured?.priceRange.minVariantPrice ?? null;
+const compareAt = featured?.compareAtPriceRange?.minVariantPrice ?? null;
+const off = discountPercent(min, compareAt);
+const tag = isOnSale(min, compareAt) && off != null ? `−${off}% TODAY` : 'NEW TODAY';
+// Fixed editorial cover image — a controlled, high-res dark shot that keeps the
+// white hero copy readable (a random product photo as a full-bleed bg does not).
+// The featured product still drives the price + CTA link below.
+// Alternatives available: '/images/hero-cover.jpg' (glowing laptop) and
+// '/images/hero-cover-2.jpg' (phone on a solid dark studio backdrop) — swap to taste.
+const heroImg = '/images/hero-cover-2.jpg';
+const heroHref = featured ? `/products/${featured.handle}` : '/products';
+const priceLabel = min ? formatMoney(min.amount, min.currencyCode) : '';
+
+const sideA = collections[0] ? `/collections/${collections[0].handle}` : '/collections';
+const sideB = collections[1] ? `/collections/${collections[1].handle}` : '/collections';
+---
+
+<section class="section-hero">
+  <div class="container">
+    <div class="hero-grid">
+      <article class="hero-main">
+        <div class="hero-main-bg">
+          <img src={heroImg} alt={featured?.title ?? 'The launch everyone is talking about'} fetchpriority="high" />
+        </div>
+        <div class="hero-main-gradient"></div>
+
+        <div class="hero-stats">
+          <span class="hero-discount-tag">{tag}</span>
+        </div>
+
+        <div class="hero-main-content">
+          <div class="hero-eyebrow">
+            <span class="ping"></span>
+            <span class="label">LIVE · Cover Story</span>
+            <span class="divider"></span>
+            <span class="date">Issue 247 · This Week</span>
+          </div>
+
+          <h1 class="hero-title">THE LAUNCH<br />EVERYONE'S<br /><em>TALKING ABOUT.</em></h1>
+
+          <p class="hero-deck">
+            Hand-tested gear, honest verdicts and serious deals — the day's best tech, curated for
+            shoppers who actually read the spec sheet. We tested it for a month — read the verdict
+            inside.
+          </p>
+
+          <div class="hero-cta-row">
+            <a href={heroHref} class="btn btn-deal btn-lg">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h9.4a2 2 0 0 0 2-1.5L23 6H6" />
+                <circle cx="9" cy="20" r="1.5" />
+                <circle cx="18" cy="20" r="1.5" />
+              </svg>
+              {priceLabel ? `Shop now — ${priceLabel}` : 'Shop the drop'}
+            </a>
+            <a
+              href={heroHref}
+              class="btn btn-light btn-lg"
+              style="background: rgba(255,255,255,0.12); color: var(--white); border-color: rgba(255,255,255,0.3);"
+            >
+              Read the Review
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </a>
+          </div>
+          <span class="hero-rating" style="margin-top: 6px;">
+            <span class="stars">★★★★★</span> 4.9 · 2,847 reviews
+          </span>
+        </div>
+      </article>
+
+      <aside class="hero-side">
+        <a href={sideA} class="hero-side-card dark-text">
+          <img src="/images/side-gaming.jpg" alt="Save 40% on Gaming" loading="lazy" />
+          <div class="badge-row">
+            <span class="chip chip-dark">⚡ Today's Deal</span>
+          </div>
+          <div class="body">
+            <h3>SAVE 40%<br />ON GAMING</h3>
+            <p class="desc">Curated bundle: keyboard, mouse, headset, and mousepad — all RGB, all ready.</p>
+            <span class="cta">
+              Shop the bundle
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </span>
+          </div>
+        </a>
+
+        <a href={sideB} class="hero-side-card">
+          <img src="/images/hero.jpg" alt="Laptops Hot This Week" loading="lazy" />
+          <div class="grad"></div>
+          <div class="badge-row">
+            <span class="chip chip-red">🔥 Hot This Week</span>
+          </div>
+          <div class="body">
+            <h3>LAPTOPS<br />FROM $799</h3>
+            <p class="desc">Back-to-work picks: thin, light, all-day battery. Hand-tested by our editors.</p>
+            <span class="cta">
+              Shop laptops
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </span>
+          </div>
+        </a>
+      </aside>
+    </div>
+
+    <div class="hero-strip">
+      <div class="hero-strip-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
+          <path d="M15 18H9" />
+          <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.63l-3-3.67A1 1 0 0 0 18 9h-3v9" />
+          <circle cx="17" cy="18" r="2" />
+          <circle cx="7" cy="18" r="2" />
+        </svg>
+        <div>
+          <h4>Free Shipping</h4>
+          <p>On orders over $99</p>
+        </div>
+      </div>
+      <div class="hero-strip-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+          <path d="M12 2v1M12 21v1M2 12h1M21 12h1" />
+        </svg>
+        <div>
+          <h4>Same-Day Delivery</h4>
+          <p>Order by 2pm · 12 cities</p>
+        </div>
+      </div>
+      <div class="hero-strip-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+          <path d="M3 3v5h5" />
+          <path d="M12 7v5l3 2" />
+        </svg>
+        <div>
+          <h4>30-Day Returns</h4>
+          <p>No questions, no fees</p>
+        </div>
+      </div>
+      <div class="hero-strip-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+        <div>
+          <h4>Secure Checkout</h4>
+          <p>Klarna · Affirm · Apple Pay</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,20 @@
+---
+// Compare page — client-side side-by-side of saved products.
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import PageHeader from '~/components/layout/PageHeader.astro';
+import CompareTable from '~/components/react/CompareTable.tsx';
+
+export const prerender = false;
+---
+
+<BaseLayout title="Compare" description="Line up your shortlist side by side." noindex>
+  <PageHeader
+    eyebrow="Decide faster"
+    title="Compare"
+    description="Your shortlist, side by side — up to four products at a time."
+    crumbs={[{ label: 'Home', href: '/' }, { label: 'Compare' }]}
+  />
+  <div class="wrap section">
+    <CompareTable client:load />
+  </div>
+</BaseLayout>

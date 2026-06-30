@@ -1,0 +1,50 @@
+---
+// ============================================================
+//  Journal — blog index. Pulls articles from the store's blog;
+//  shows a friendly empty state when none are published.
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import PageHeader from '~/components/layout/PageHeader.astro';
+import ArticleCard from '~/components/content/ArticleCard.astro';
+import { getArticles } from '~/lib/shopify';
+import type { Article } from '~/lib/shopify/types';
+
+export const prerender = false;
+
+let articles: Article[] = [];
+let loadError = false;
+try {
+  articles = await getArticles('news', 12);
+} catch (err) {
+  loadError = true;
+  console.error('[journal] load failed:', (err as Error).message);
+}
+---
+
+<BaseLayout title="The Journal" description="Reviews, guides and launch coverage from the asmaz team.">
+  <PageHeader
+    eyebrow="The Journal"
+    title="Reviews & dispatches"
+    description="Hands-on reviews, buying guides and launch coverage — straight from the test bench."
+    crumbs={[{ label: 'Home', href: '/' }, { label: 'Journal' }]}
+  />
+  <div class="wrap section">
+    {
+      articles.length > 0 ? (
+        <div class="journal-grid">
+          {articles.map((a) => <ArticleCard article={a} />)}
+        </div>
+      ) : (
+        <div class="empty-state">
+          <h2 class="masthead">The journal is warming up</h2>
+          <p>
+            {loadError
+              ? "We couldn't load the journal right now. Please try again shortly."
+              : 'No articles published yet. Connect a Shopify blog (handle “news”) to populate this page.'}
+          </p>
+          <a href="/products" class="btn btn--news btn--md">Shop the latest instead</a>
+        </div>
+      )
+    }
+  </div>
+</BaseLayout>

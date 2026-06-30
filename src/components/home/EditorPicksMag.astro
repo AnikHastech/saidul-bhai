@@ -1,0 +1,92 @@
+---
+import { formatMoney, isOnSale } from '~/lib/utils';
+import type { ProductCard } from '~/lib/shopify/types';
+
+interface Props {
+  products: ProductCard[];
+}
+const { products } = Astro.props;
+const picks = products.slice(0, 3);
+
+const STAMPS = ['★ Editor\'s Choice', '⚡ Best Value', '★ Best Pick'];
+const QUOTES = [
+  'The first time we tested it we knew — this one earns a permanent spot on the bench. Performance that punches above its price, every time.',
+  'Three editors used it back-to-back for two weeks. None switched back. That\'s the clearest endorsement we give.',
+  'Triple-tested by our review team. The build quality, the specs, and the feel all held up. One of this week\'s clear standouts.',
+];
+const CATS = ['Editor Pick · Top Rated', 'Best Value · Editors\' Favourite', 'Staff Pick · Verified'];
+---
+
+<section class="section-picks">
+  <div class="container">
+    <div class="picks-head">
+      <div class="left">
+        <span class="label-kicker">Hand-picked by our team</span>
+        <h2>EDITORS<br>PICKED <em>THIS WEEK.</em></h2>
+      </div>
+      <p class="intro">Every week, our editors meet, test, and finalize products worth your attention. No paid placements. No noise. Here's what made the cut.</p>
+    </div>
+
+    <div class="picks-grid">
+      {picks.map((p, i) => {
+        const min = p.priceRange.minVariantPrice;
+        const compareAt = p.compareAtPriceRange?.minVariantPrice ?? null;
+        const onSale = isOnSale(min, compareAt);
+        const pdp = `/products/${p.handle}`;
+        return (
+          <article class="pick-card">
+            <div class="pick-img">
+              <a href={pdp}>
+                {p.featuredImage
+                  ? <img src={p.featuredImage.url} alt={p.featuredImage.altText ?? p.title} loading="lazy" />
+                  : null}
+              </a>
+              <span class="editor-stamp">{STAMPS[i % STAMPS.length]}</span>
+            </div>
+            <div class="pick-body">
+              <span class="pick-cat">{p.vendor ? `${p.vendor} · ${CATS[i % CATS.length].split(' · ')[1]}` : CATS[i % CATS.length]}</span>
+              <h3><a href={pdp}>{p.title}</a></h3>
+              <p class="pick-quote">{QUOTES[i % QUOTES.length]}</p>
+              <div class="pick-foot">
+                <div class="pick-price">
+                  <span class="now">{formatMoney(min.amount, min.currencyCode)}</span>
+                  {onSale && compareAt && <span class="was">{formatMoney(compareAt.amount, compareAt.currencyCode)}</span>}
+                </div>
+                <button class="pick-cta" data-variant-id={p.firstVariantId} data-price={min.amount} data-currency={min.currencyCode}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h9.4a2 2 0 0 0 2-1.5L23 6H6"/></svg>
+                  Add to Cart
+                </button>
+              </div>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  </div>
+</section>
+
+<script>
+  import { addItem } from '~/stores/cart';
+  import { cachePrice } from '~/stores/price-cache';
+
+  const CART_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h9.4a2 2 0 0 0 2-1.5L23 6H6"/></svg>`;
+
+  document.querySelector('.picks-grid')?.addEventListener('click', async (e) => {
+    const btn = (e.target as Element).closest('.pick-cta') as HTMLButtonElement | null;
+    if (!btn) return;
+    const variantId = btn.dataset.variantId ?? '';
+    if (!variantId || btn.disabled) return;
+
+    if (btn.dataset.price && btn.dataset.currency)
+      cachePrice(variantId, { amount: btn.dataset.price, currencyCode: btn.dataset.currency });
+
+    btn.disabled = true;
+    btn.innerHTML = 'Adding…';
+    await addItem(variantId, 1, { open: true });
+    btn.innerHTML = '✓ Added!';
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = `${CART_SVG} Add to Cart`;
+    }, 2000);
+  });
+</script>

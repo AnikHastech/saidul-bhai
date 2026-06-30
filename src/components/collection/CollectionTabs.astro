@@ -1,0 +1,33 @@
+---
+// ============================================================
+//  CollectionTabs — horizontal quick-filter tabs of departments.
+//  Scrollable on mobile; highlights the active handle. Hidden when
+//  there are no collections.
+// ============================================================
+import type { Collection } from '~/lib/shopify/types';
+
+interface Props {
+  collections: Collection[];
+  activeHandle?: string;
+}
+const { collections, activeHandle } = Astro.props;
+const allActive = !activeHandle;
+---
+
+{
+  collections.length > 0 && (
+    <nav class="col-tabs" aria-label="Departments">
+      <div class="wrap col-tabs__inner">
+        <a href="/products" class:list={['col-tab', allActive && 'is-active']}>All</a>
+        {collections.map((c) => (
+          <a
+            href={`/collections/${c.handle}`}
+            class:list={['col-tab', c.handle === activeHandle && 'is-active']}
+          >
+            {c.title}
+          </a>
+        ))}
+      </div>
+    </nav>
+  )
+}

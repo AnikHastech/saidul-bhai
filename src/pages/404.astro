@@ -1,0 +1,57 @@
+---
+// Custom 404 — framed editorial "signal lost" splash with glitch
+// numerals and an inline store search.
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import Button from '~/components/ui/Button.astro';
+
+export const prerender = false;
+Astro.response.status = 404;
+
+const depts = [
+  { label: 'Mobile', url: '/collections/phone-tablet' },
+  { label: 'Laptops', url: '/collections/pc-laptop' },
+  { label: 'Accessories', url: '/collections/accessories' },
+  { label: 'Home & Kitchen', url: '/collections/kitchen-appliances' },
+  { label: 'Hot Deals', url: '/collections/sale' },
+];
+---
+
+<BaseLayout title="Page not found">
+  <div class="wrap e404">
+    <div class="e404-panel">
+      <div class="e404-meta">
+        <span>asmaz</span>
+        <span class="e404-meta__mid"><span class="e404-meta__dot"></span> Signal Lost</span>
+        <span>No. 404</span>
+      </div>
+
+      <div class="e404-stage">
+        <span class="e404-num" data-text="404">404</span>
+      </div>
+
+      <p class="eyebrow kicker e404-kick">Error 404</p>
+      <h1 class="e404-title">This page went <em>off-grid.</em></h1>
+      <p class="e404-desc">
+        The page you’re after has moved, sold out, or never existed — let’s get you back on signal.
+      </p>
+
+      <form class="e404-search" action="/search" method="get" role="search">
+        <span class="e404-search__field">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+          <input type="search" name="q" placeholder="Search 12,000+ products…" aria-label="Search the store" />
+        </span>
+        <button type="submit">Search</button>
+      </form>
+
+      <div class="e404-links">
+        <Button href="/" variant="deal">Back home</Button>
+        <Button href="/products" variant="outline">Shop all products</Button>
+      </div>
+
+      <div class="e404-quick">
+        <span class="e404-quick__label">Popular:</span>
+        {depts.map((d) => <a href={d.url}>{d.label}</a>)}
+      </div>
+    </div>
+  </div>
+</BaseLayout>

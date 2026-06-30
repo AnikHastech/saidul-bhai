@@ -1,0 +1,53 @@
+{
+  "name": "asmaz",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "asmaz — a production-ready headless Shopify storefront theme for Astro 6 (SSR): React islands, server-owned cart, customer accounts, multi-currency, and a magazine-style design system. Runs credential-free against Shopify's mock.shop demo API.",
+  "keywords": [
+    "astro",
+    "astro-theme",
+    "astro-component",
+    "withastro",
+    "shopify",
+    "headless-commerce",
+    "ecommerce",
+    "storefront",
+    "react",
+    "ssr"
+  ],
+  "homepage": "https://github.com/hasthemes/asmaz#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hasthemes/asmaz.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hasthemes/asmaz/issues"
+  },
+  "author": "HasThemes",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "start": "node --env-file-if-exists=.env ./dist/server/entry.mjs",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/node": "^10",
+    "@astrojs/react": "^4",
+    "@nanostores/react": "^0.8",
+    "astro": "^6.4.7",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.20.0",
+    "nanostores": "^0.11",
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19"
+  }
+}

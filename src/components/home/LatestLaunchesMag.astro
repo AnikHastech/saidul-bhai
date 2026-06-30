@@ -1,0 +1,114 @@
+---
+// ============================================================
+//  Latest Launches — exact horizontal-scroll carousel. Cards are
+//  the store's newest products (image, vendor, title, price, link).
+// ============================================================
+import { formatMoney } from '~/lib/utils';
+import type { ProductCard } from '~/lib/shopify/types';
+
+interface Props {
+  products: ProductCard[];
+}
+const { products } = Astro.props;
+
+// Drop dates: today going backwards one day per card (server-rendered, stable)
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const dropDate = (idx: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() - idx);
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+};
+---
+
+<section class="section-latest">
+  <div class="container">
+    <div class="section-head">
+      <div class="section-head-left">
+        <span class="label-kicker">Just Dropped</span>
+        <h2>LATEST <em>LAUNCHES.</em></h2>
+      </div>
+      <div class="section-head-right">
+        <div class="launches-nav">
+          <button class="launches-nav-btn" id="launchPrev" aria-label="Previous">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M11 18l-6-6 6-6" /></svg>
+          </button>
+          <button class="launches-nav-btn" id="launchNext" aria-label="Next">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          </button>
+        </div>
+        <a href="/products?sort=newest" class="see-all-link">
+          All New Arrivals
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="launches-shell">
+      <div class="launches-track" id="launchesTrack">
+        {
+          products.map((p, i) => {
+            const min = p.priceRange.minVariantPrice;
+            const pdp = `/products/${p.handle}`;
+            return (
+              <article class="launch-card">
+                <a href={pdp} class="launch-media">
+                  {p.featuredImage ? <img src={p.featuredImage.url} alt={p.featuredImage.altText ?? p.title} loading="lazy" /> : null}
+                  <span class="launch-new-badge">NEW</span>
+                  <span class="launch-date">{dropDate(i)}</span>
+                </a>
+                <div class="launch-body">
+                  <span class="launch-cat">{p.vendor || 'New In'}</span>
+                  <h3 class="launch-title"><a href={pdp}>{p.title}</a></h3>
+                  <p class="launch-desc">Fresh off the bench — one of this week's latest launches, in stock and ready to ship.</p>
+                  <div class="launch-foot">
+                    <div class="launch-price"><small>From</small>{formatMoney(min.amount, min.currencyCode)}</div>
+                    <button class="launch-cta" data-variant-id={p.firstVariantId} data-price={min.amount} data-currency={min.currencyCode}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h9.4a2 2 0 0 0 2-1.5L23 6H6"/></svg>
+                      Add to Cart
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })
+        }
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { addItem } from '~/stores/cart';
+  import { cachePrice } from '~/stores/price-cache';
+
+  const track = document.getElementById('launchesTrack');
+  const prev  = document.getElementById('launchPrev');
+  const next  = document.getElementById('launchNext');
+  if (track && prev && next) {
+    const step = 340;
+    prev.addEventListener('click', () => track.scrollBy({ left: -step, behavior: 'smooth' }));
+    next.addEventListener('click', () => track.scrollBy({ left: step, behavior: 'smooth' }));
+  }
+
+  const CART_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h9.4a2 2 0 0 0 2-1.5L23 6H6"/></svg>`;
+
+  track?.addEventListener('click', async (e) => {
+    const btn = (e.target as Element).closest('.launch-cta') as HTMLButtonElement | null;
+    if (!btn) return;
+    const variantId = btn.dataset.variantId ?? '';
+    if (!variantId || btn.disabled) return;
+    e.preventDefault();
+
+    if (btn.dataset.price && btn.dataset.currency)
+      cachePrice(variantId, { amount: btn.dataset.price, currencyCode: btn.dataset.currency });
+
+    btn.disabled = true;
+    btn.innerHTML = 'Adding…';
+    await addItem(variantId, 1, { open: true });
+    btn.innerHTML = '✓ Added!';
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = `${CART_SVG} Add to Cart`;
+    }, 2000);
+  });
+</script>

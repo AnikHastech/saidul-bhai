@@ -1,0 +1,78 @@
+---
+// ============================================================
+//  ProductCard — magazine "specimen" card: media with hover zoom,
+//  status flags, wishlist heart (island), slide-up quick-view bar,
+//  vendor eyebrow, clamped title and price. Card body links to the
+//  PDP (variant choices live there).
+// ============================================================
+import type { ProductCard as ProductCardType } from '~/lib/shopify/types';
+import { discountPercent, isOnSale } from '~/lib/utils';
+import Price from '~/components/ui/Price.astro';
+import Badge from '~/components/ui/Badge.astro';
+import Icon from '~/components/ui/Icon.astro';
+import CardActions from '~/components/react/CardActions.tsx';
+import type { ProductSummary } from '~/stores/types';
+
+interface Props {
+  product: ProductCardType;
+  class?: string;
+}
+
+const { product, class: className } = Astro.props;
+
+const min = product.priceRange.minVariantPrice;
+const max = product.priceRange.maxVariantPrice;
+const compareAt = product.compareAtPriceRange?.minVariantPrice ?? null;
+const onSale = isOnSale(min, compareAt);
+const off = discountPercent(min, compareAt);
+const ranged = min.amount !== max.amount;
+const soldOut = !product.availableForSale;
+const href = `/products/${product.handle}`;
+
+const summary: ProductSummary = {
+  id: product.id,
+  handle: product.handle,
+  title: product.title,
+  image: product.featuredImage?.url ?? null,
+  price: min.amount,
+  currency: min.currencyCode,
+  compareAt: compareAt?.amount ?? null,
+};
+---
+
+<article class:list={['product-card', className]}>
+  <a href={href} class="product-card__media" aria-label={product.title}>
+    {
+      product.featuredImage ? (
+        <img src={product.featuredImage.url} alt={product.featuredImage.altText ?? product.title} loading="lazy" />
+      ) : (
+        <span class="product-card__noimg">No image</span>
+      )
+    }
+    <span class="product-card__quick">
+      Quick view
+      <Icon name="arrowRight" size={14} />
+    </span>
+  </a>
+
+  <div class="product-card__flags">
+    {soldOut && <Badge tone="news">Sold out</Badge>}
+    {!soldOut && onSale && (!ranged && off != null ? <Badge tone="deal">−{off}%</Badge> : <Badge tone="deal">Sale</Badge>)}
+  </div>
+
+  <CardActions client:visible product={summary} />
+
+  <div class="product-card__body">
+    {product.vendor && <p class="product-card__brand">{product.vendor}</p>}
+    <a href={href} class="product-card__name">{product.title}</a>
+    <div class="product-card__prices">
+      <Price
+        amount={min.amount}
+        compareAt={ranged ? null : compareAt?.amount}
+        currency={min.currencyCode}
+        size="lg"
+      />
+      {ranged && <span class="product-card__brand">From</span>}
+    </div>
+  </div>
+</article>

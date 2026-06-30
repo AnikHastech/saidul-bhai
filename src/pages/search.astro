@@ -1,0 +1,85 @@
+---
+// ============================================================
+//  Search results — full product search with sort + pagination.
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import PageHeader from '~/components/layout/PageHeader.astro';
+import ProductListing from '~/components/product/ProductListing.astro';
+import { searchProducts, SEARCH_SORT_OPTIONS, resolveSort } from '~/lib/shopify';
+import { paginationUrls } from '~/lib/pagination';
+import type { ProductCard } from '~/lib/shopify/types';
+
+export const prerender = false;
+
+const url = Astro.url;
+const q = url.searchParams.get('q')?.trim() ?? '';
+const sortValue = url.searchParams.get('sort') ?? SEARCH_SORT_OPTIONS[0].value;
+const sort = resolveSort(SEARCH_SORT_OPTIONS, sortValue);
+const after = url.searchParams.get('after');
+const before = url.searchParams.get('before');
+
+let products: ProductCard[] = [];
+let total = 0;
+let prevUrl: string | null = null;
+let nextUrl: string | null = null;
+let loadError = false;
+
+if (q) {
+  try {
+    const page = await searchProducts({
+      query: q,
+      pageSize: 24,
+      after,
+      before,
+      sortKey: sort.sortKey,
+      reverse: sort.reverse,
+    });
+    products = page.items;
+    total = page.totalCount;
+    ({ prevUrl, nextUrl } = paginationUrls(url, page.pageInfo));
+  } catch (err) {
+    console.error('[search] load failed:', (err as Error).message);
+    loadError = true;
+  }
+}
+
+const countLabel = !q
+  ? 'Type a query to search'
+  : loadError
+    ? 'Search unavailable'
+    : `${total} result${total === 1 ? '' : 's'} for “${q}”`;
+---
+
+<BaseLayout title={q ? `Search · ${q}` : 'Search'} description="Search the asmaz catalogue." noindex>
+  <PageHeader
+    eyebrow="Search"
+    title={q ? `“${q}”` : 'Search'}
+    crumbs={[{ label: 'Home', href: '/' }, { label: 'Search' }]}
+  />
+  <div class="wrap section">
+    {
+      q ? (
+        <ProductListing
+          products={products}
+          countLabel={countLabel}
+          url={url}
+          sortOptions={SEARCH_SORT_OPTIONS}
+          sortValue={sort.value}
+          sortAction="/search"
+          prevUrl={prevUrl}
+          nextUrl={nextUrl}
+          emptyTitle={loadError ? 'Search unavailable' : 'No matches'}
+          emptyBody={loadError
+            ? "We couldn't run that search right now. Please try again shortly."
+            : `Nothing matched “${q}”. Try a different term or browse everything.`}
+        />
+      ) : (
+        <div class="empty-state">
+          <h2 class="masthead">Search the catalogue</h2>
+          <p>Use the search bar above to find products, brands and deals.</p>
+          <a href="/products" class="btn btn--news btn--md">Browse all products</a>
+        </div>
+      )
+    }
+  </div>
+</BaseLayout>

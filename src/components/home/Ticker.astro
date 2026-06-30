@@ -1,0 +1,19 @@
+---
+// Scrolling highlights ticker (black band). Pure CSS marquee.
+import Marquee from '~/components/ui/Marquee.astro';
+
+const items = [
+  'Free shipping over <b>$99</b>',
+  'Same-day delivery in 12 cities',
+  'Buy now, pay later',
+  '30-day hassle-free returns',
+  '24/7 live support',
+  'Price-match guarantee',
+];
+---
+
+<div class="ticker">
+  <Marquee ariaLabel="Store highlights">
+    {items.map((it) => <span class="ticker__item" set:html={it} />)}
+  </Marquee>
+</div>

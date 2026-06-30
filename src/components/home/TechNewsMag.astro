@@ -1,0 +1,88 @@
+---
+// ============================================================
+//  Tech News — exact magazine layout: one featured article + 3
+//  minis, from the store's blog (image, title, excerpt, author,
+//  date). Links go to the journal.
+// ============================================================
+import type { Article } from '~/lib/shopify/types';
+
+interface Props {
+  articles: Article[];
+}
+const { articles } = Astro.props;
+
+const featured = articles[0];
+const minis = articles.slice(1, 4);
+
+const initials = (name?: string | null) =>
+  (name ?? 'AS')
+    .split(/\s+/)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+const fmtDate = (iso?: string | null) =>
+  iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+
+const MINI_CATS = [
+  { cls: 'review', label: 'Review' },
+  { cls: '', label: 'News' },
+  { cls: 'guide', label: 'Buying Guide' },
+];
+const READ = ['11 min read', '7 min read', '9 min read'];
+---
+
+<section class="section-news">
+  <div class="container">
+    <div class="section-head">
+      <div class="section-head-left">
+        <span class="label-kicker">The Daily Drop</span>
+        <h2>TECH <em>NEWS.</em></h2>
+      </div>
+      <div class="section-head-right">
+        <a href="/journal" class="see-all-link">
+          Read the Journal
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="news-layout">
+      <article class="news-featured">
+        {featured.image && <img src={featured.image.url} alt={featured.image.altText ?? featured.title} loading="lazy" />}
+        <div class="grad"></div>
+        <div class="news-featured-content">
+          <span class="cat-pill">Cover Story · 12 min read</span>
+          <h2><a href={`/journal/${featured.handle}`}>{featured.title}</a></h2>
+          {featured.excerpt && <p class="deck">{featured.excerpt}</p>}
+          <div class="byline">
+            <span class="avatar">{initials(featured.author)}</span>
+            <span>By <b>{featured.author ?? 'asmaz Editors'}</b></span>
+            <span class="dot"></span>
+            <span>{fmtDate(featured.publishedAt)}</span>
+            <span class="dot"></span>
+            <span>⭐ Featured</span>
+          </div>
+        </div>
+      </article>
+
+      <div class="news-list">
+        {
+          minis.map((a, i) => (
+            <article class="news-mini">
+              <div class="news-mini-img">
+                {a.image && <img src={a.image.url} alt={a.image.altText ?? a.title} loading="lazy" />}
+              </div>
+              <div class="news-mini-body">
+                <span class={`news-mini-cat ${MINI_CATS[i % MINI_CATS.length].cls}`}>{MINI_CATS[i % MINI_CATS.length].label}</span>
+                <h3><a href={`/journal/${a.handle}`}>{a.title}</a></h3>
+                {a.excerpt && <p class="news-mini-desc">{a.excerpt}</p>}
+                <p class="meta"><span class="avatar">{initials(a.author)}</span><span>By <b>{a.author ?? 'asmaz'}</b> · {fmtDate(a.publishedAt)} · {READ[i % READ.length]}</span></p>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </div>
+</section>

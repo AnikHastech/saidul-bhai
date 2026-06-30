@@ -1,0 +1,18 @@
+---
+// Back-to-top — fixed pill, fades in past the first viewport.
+import Icon from '~/components/ui/Icon.astro';
+---
+
+<button id="backTop" type="button" aria-label="Back to top" class="back-top">
+  <Icon name="arrowUp" size={22} strokeWidth={2.2} />
+</button>
+
+<script>
+  const btn = document.getElementById('backTop');
+  if (btn) {
+    const toggle = () => btn.classList.toggle('is-visible', window.scrollY > 600);
+    toggle();
+    window.addEventListener('scroll', toggle, { passive: true });
+    btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  }
+</script>

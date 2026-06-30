@@ -1,0 +1,31 @@
+---
+// ============================================================
+//  BrandStrip — row of brand wordmarks. Uses Shopify product
+//  vendors when available, else a default set. Decorative.
+// ============================================================
+import SectionHeading from '~/components/ui/SectionHeading.astro';
+
+interface Props {
+  brands?: string[];
+}
+const DEFAULTS = ['SONIC', 'NOVA', 'PIXELPRO', 'AURA', 'VOLTEDGE', 'KORE', 'ZENITH', 'FLUX', 'HALO', 'OBSIDIAN', 'NIMBUS', 'APEX'];
+const { brands = [] } = Astro.props;
+const list = (brands.length >= 6 ? brands : DEFAULTS).slice(0, 12);
+---
+
+<section class="home-section">
+  <div class="wrap">
+    <SectionHeading
+      eyebrow="Stockists"
+      title="Brands we carry"
+      href="/collections"
+      ctaLabel="All brands"
+      class="home-section__head"
+    />
+    <div class="brands-grid">
+      {list.map((name) => (
+        <div class="brand-cell"><span class="brand-cell__name">{name}</span></div>
+      ))}
+    </div>
+  </div>
+</section>

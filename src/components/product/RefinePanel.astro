@@ -1,0 +1,70 @@
+---
+// ============================================================
+//  RefinePanel — faceted filter sidebar driven by Shopify's
+//  collection filters. Each value is an SSR toggle link (no JS,
+//  shareable URLs); price is a min/max GET form. Native <details>
+//  accordions collapse groups.
+// ============================================================
+import type { CollectionFilter } from '~/lib/shopify/types';
+import { toggleFilterHref, isFilterActive, clearFiltersHref, hasActiveFilters, paramPairs } from '~/lib/filters';
+import Icon from '~/components/ui/Icon.astro';
+
+interface Props {
+  filters: CollectionFilter[];
+  url: URL;
+  action: string;
+}
+const { filters, url, action } = Astro.props;
+
+const showClear = hasActiveFilters(url);
+const priceHidden = paramPairs(url, ['price_min', 'price_max', 'after', 'before']);
+const curMin = url.searchParams.get('price_min') ?? '';
+const curMax = url.searchParams.get('price_max') ?? '';
+
+// Only render groups that actually have values.
+const groups = filters.filter((f) => f.values.length > 0);
+---
+
+<aside class="refine" aria-label="Filters">
+  <div class="refine__head">
+    <h2 class="refine__title">Refine</h2>
+    {showClear && <a href={clearFiltersHref(url)} class="refine__clear">Clear all</a>}
+  </div>
+
+  {
+    groups.map((group) => (
+      <details class="refine-group" open>
+        <summary class="refine-group__summary">
+          {group.label}
+          <Icon name="chevronDown" size={16} class="refine-group__chev" />
+        </summary>
+        <div class="refine-group__body">
+          {group.type === 'PRICE_RANGE' ? (
+            <form method="get" action={action} class="refine-price">
+              {priceHidden.map((h) => <input type="hidden" name={h.name} value={h.value} />)}
+              <input type="number" name="price_min" inputmode="numeric" min="0" placeholder="Min" value={curMin} aria-label="Minimum price" class="refine-price__input" />
+              <span class="refine-price__dash">–</span>
+              <input type="number" name="price_max" inputmode="numeric" min="0" placeholder="Max" value={curMax} aria-label="Maximum price" class="refine-price__input" />
+              <button type="submit" class="refine-price__go">Go</button>
+            </form>
+          ) : (
+            <ul class="refine-opts">
+              {group.values.map((v) => {
+                const active = isFilterActive(url, v.input);
+                return (
+                  <li>
+                    <a href={toggleFilterHref(url, v.input)} class:list={['refine-opt', active && 'is-active']} aria-pressed={active}>
+                      <span class="refine-opt__check">{active && <Icon name="check" size={13} strokeWidth={2.4} />}</span>
+                      <span class="refine-opt__label">{v.label}</span>
+                      <span class="refine-opt__count">{v.count}</span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </details>
+    ))
+  }
+</aside>

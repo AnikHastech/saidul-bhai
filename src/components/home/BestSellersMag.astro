@@ -1,0 +1,291 @@
+---
+import { formatMoney, discountPercent, isOnSale } from '~/lib/utils';
+import type { ProductCard } from '~/lib/shopify/types';
+
+interface Props {
+  products: ProductCard[];
+}
+const { products } = Astro.props;
+const display = products.slice(0, 8);
+
+const catOf = (p: ProductCard) =>
+  ((p.productType ?? '').trim() || (p.vendor ?? '').trim());
+
+const typeCounts = new Map<string, number>();
+for (const p of display) {
+  const c = catOf(p);
+  if (c) typeCounts.set(c, (typeCounts.get(c) ?? 0) + 1);
+}
+const dynamicTypes = [...typeCounts.entries()]
+  .sort((a, b) => b[1] - a[1])
+  .map(([label, count]) => ({ label, count }));
+
+const TABS = [
+  { label: 'All', count: display.length, filter: 'all' },
+  ...dynamicTypes.map((t) => ({ ...t, filter: t.label })),
+];
+
+const FLAGS = [
+  { cls: 'yellow', text: 'HOT' },
+  { cls: 'blue', text: 'EDITOR' },
+  { cls: 'blue', text: 'NEW' },
+  { cls: 'yellow', text: 'RGB' },
+];
+const RVAL = ['4.8', '4.9', '4.7', '4.6', '4.9', '4.8'];
+const RCNT = ['(3,481)', '(842)', '(1,247)', '(594)', '(2,847)', '(488)'];
+
+// Map color names to CSS background values
+const swatchBg = (name: string): string => {
+  const n = name.toLowerCase().replace(/[\s-]+/g, '');
+  const MAP: Record<string, string> = {
+    black: '#1a1a1a', white: '#f0f0f0', red: '#e8192c',
+    blue: '#0055cc', green: '#16a34a', yellow: '#f5c218',
+    gray: '#9ca3af', grey: '#9ca3af', silver: '#c0c0c0',
+    gold: '#d4af37', pink: '#ec4899', purple: '#7c3aed',
+    orange: '#f97316', brown: '#92400e', navy: '#1e3a8a',
+    spacegray: '#6e6e73', midnight: '#1d1d2e', starlight: '#e3ddd4',
+    rose: '#e79fa0', titanium: '#8d8d8d', natural: '#d2b48c',
+    graphite: '#4a4a4a', coral: '#ff7f6e', teal: '#0d9488',
+  };
+  return MAP[n] ?? name.toLowerCase();
+};
+---
+
+<section class="section-bestsellers">
+  <div class="container">
+    <div class="section-head">
+      <div class="section-head-left">
+        <span class="label-kicker">Most Loved</span>
+        <h2>BEST <em>SELLERS.</em></h2>
+      </div>
+      <div class="section-head-right">
+        <a href="/products" class="see-all-link">
+          Shop All Best Sellers
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="bs-tabs" id="bsTabs">
+      {TABS.map((t, i) => (
+        <button
+          class:list={['bs-tab', i === 0 && 'is-active']}
+          data-filter={t.filter}
+        >
+          {t.label} <span class="count">({t.count})</span>
+        </button>
+      ))}
+    </div>
+
+    <div class="bs-grid" id="bsGrid">
+      {display.map((p, i) => {
+        const min = p.priceRange.minVariantPrice;
+        const compareAt = p.compareAtPriceRange?.minVariantPrice ?? null;
+        const off = discountPercent(min, compareAt);
+        const onSale = isOnSale(min, compareAt);
+        const flag = FLAGS[i % FLAGS.length];
+        const pdp = `/products/${p.handle}`;
+        const cat = catOf(p);
+
+        // Resolve color option + matching variants
+        const colorOptName = p.options?.find(
+          o => o.name.toLowerCase() === 'color' || o.name.toLowerCase() === 'colour'
+        )?.name ?? null;
+        const colorVariants = colorOptName
+          ? (p.cardVariants ?? []).filter(v =>
+              v.selectedOptions.some(o => o.name === colorOptName)
+            )
+          : [];
+
+        return (
+          <article class="bs-card" data-ptype={cat}>
+            <div class="bs-card-media">
+              <a href={pdp}>
+                {p.featuredImage
+                  ? <img src={p.featuredImage.url} alt={p.featuredImage.altText ?? p.title} loading="lazy" />
+                  : null}
+              </a>
+              <div class="bs-card-flags">
+                {onSale && off != null && <span class="bs-flag red">−{off}%</span>}
+                <span class={`bs-flag ${flag.cls}`}>{flag.text}</span>
+              </div>
+              <button
+                class="bs-card-wish"
+                aria-label="Wishlist"
+                data-wish-id={p.id}
+                data-wish-handle={p.handle}
+                data-wish-title={p.title}
+                data-wish-img={p.featuredImage?.url ?? ''}
+                data-wish-price={min.amount}
+                data-wish-currency={min.currencyCode}
+              ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg></button>
+              <div class="bs-quick">
+                <button class="qv" data-qv-handle={p.handle}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  Quick view
+                </button>
+                <button class="add" data-variant-id={p.firstVariantId} data-price={min.amount} data-currency={min.currencyCode}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h9.4a2 2 0 0 0 2-1.5L23 6H6"/></svg>
+                  Add to Cart
+                </button>
+              </div>
+            </div>
+            <div class="bs-card-body">
+              {cat && <span class="bs-card-brand">{cat}</span>}
+              <h3 class="bs-card-name"><a href={`/products/${p.handle}`}>{p.title}</a></h3>
+              <div class="bs-card-rating">
+                <span class="stars">★★★★★</span>
+                <span class="rval">{RVAL[i % RVAL.length]}</span>
+                <span class="rcnt">{RCNT[i % RCNT.length]}</span>
+              </div>
+              <div class="bs-card-prices">
+                <div class="bs-card-price-stack">
+                  <span class="bs-card-price">{formatMoney(min.amount, min.currencyCode)}</span>
+                  {onSale && compareAt && (
+                    <span class="bs-card-price-old">{formatMoney(compareAt.amount, compareAt.currencyCode)}</span>
+                  )}
+                </div>
+
+                {colorVariants.length > 1 && (
+                  <div class="bs-card-colors">
+                    {colorVariants.slice(0, 5).map((v, ci) => {
+                      const colorVal = v.selectedOptions.find(o => o.name === colorOptName)?.value ?? '';
+                      return (
+                        <button
+                          class:list={['bs-card-color', ci === 0 && 'is-active']}
+                          title={colorVal}
+                          style={`background:${swatchBg(colorVal)}`}
+                          data-swatch-id={v.id}
+                          data-swatch-price={v.price.amount}
+                          data-swatch-currency={v.price.currencyCode}
+                          data-swatch-img={v.image?.url ?? ''}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  </div>
+</section>
+
+<script>
+  import { addItem } from '~/stores/cart';
+  import { wishlist } from '~/stores/wishlist';
+  import { compare, COMPARE_CAP } from '~/stores/compare';
+  import { cachePrice } from '~/stores/price-cache';
+
+  wishlist.init();
+  compare.init();
+
+  const CART_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h9.4a2 2 0 0 0 2-1.5L23 6H6"/></svg>`;
+  const HEART_EMPTY = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>`;
+  const HEART_FULL  = `<svg viewBox="0 0 24 24" fill="#e8192c" stroke="#e8192c" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>`;
+
+  const fmt = (amount: string, currency: string) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(Number(amount));
+
+  document.getElementById('bsGrid')?.addEventListener('click', async (e) => {
+    const target = e.target as Element;
+
+    // ── Wishlist ─────────────────────────────────────────────
+    const wishBtn = target.closest('[data-wish-id]') as HTMLButtonElement | null;
+    if (wishBtn) {
+      e.preventDefault();
+      const product = {
+        id: wishBtn.dataset.wishId!,
+        handle: wishBtn.dataset.wishHandle!,
+        title: wishBtn.dataset.wishTitle!,
+        image: wishBtn.dataset.wishImg || null,
+        price: wishBtn.dataset.wishPrice ?? null,
+        currency: wishBtn.dataset.wishCurrency ?? null,
+      };
+      const added = wishlist.toggle(product);
+      wishBtn.innerHTML = added ? HEART_FULL : HEART_EMPTY;
+      wishBtn.setAttribute('aria-pressed', String(added));
+      return;
+    }
+
+    // ── Color swatch ────────────────────────────────────────────
+    const swatchBtn = target.closest('.bs-card-color') as HTMLButtonElement | null;
+    if (swatchBtn) {
+      const card = swatchBtn.closest('.bs-card') as HTMLElement;
+      // Active state
+      card.querySelectorAll('.bs-card-color').forEach(s => s.classList.remove('is-active'));
+      swatchBtn.classList.add('is-active');
+
+      // Swap variant on Add button and update cached price
+      const addBtn = card.querySelector('.add') as HTMLButtonElement | null;
+      if (addBtn && swatchBtn.dataset.swatchId) {
+        addBtn.dataset.variantId = swatchBtn.dataset.swatchId;
+        if (swatchBtn.dataset.swatchPrice && swatchBtn.dataset.swatchCurrency) {
+          addBtn.dataset.price = swatchBtn.dataset.swatchPrice;
+          addBtn.dataset.currency = swatchBtn.dataset.swatchCurrency;
+        }
+      }
+
+      // Swap price
+      const priceEl = card.querySelector('.bs-card-price') as HTMLElement | null;
+      if (priceEl && swatchBtn.dataset.swatchPrice && swatchBtn.dataset.swatchCurrency)
+        priceEl.textContent = fmt(swatchBtn.dataset.swatchPrice, swatchBtn.dataset.swatchCurrency);
+
+      // Swap image if variant has its own
+      const imgUrl = swatchBtn.dataset.swatchImg;
+      if (imgUrl) {
+        const img = card.querySelector('.bs-card-media img') as HTMLImageElement | null;
+        if (img) img.src = imgUrl;
+      }
+      return;
+    }
+
+    // ── Quick view ───────────────────────────────────────────────
+    const qvBtn = target.closest('[data-qv-handle]') as HTMLElement | null;
+    if (qvBtn) {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('quickview:open', { detail: { handle: qvBtn.dataset.qvHandle } }));
+      return;
+    }
+
+    // ── Add to Cart ──────────────────────────────────────────────
+    const addBtn = target.closest('.add') as HTMLButtonElement | null;
+    if (!addBtn) return;
+    const variantId = addBtn.dataset.variantId ?? '';
+    if (!variantId || addBtn.disabled) return;
+    e.preventDefault();
+
+    if (addBtn.dataset.price && addBtn.dataset.currency)
+      cachePrice(variantId, { amount: addBtn.dataset.price, currencyCode: addBtn.dataset.currency });
+
+    addBtn.disabled = true;
+    addBtn.innerHTML = 'Adding…';
+    await addItem(variantId, 1, { open: true });
+    addBtn.innerHTML = '✓ Added!';
+    setTimeout(() => {
+      addBtn.disabled = false;
+      addBtn.innerHTML = `${CART_SVG} Add to Cart`;
+    }, 2000);
+  });
+
+  // ── Tab filter ───────────────────────────────────────────────
+  const tabsEl = document.getElementById('bsTabs');
+  const gridEl = document.getElementById('bsGrid');
+  if (tabsEl && gridEl) {
+    const tabs  = tabsEl.querySelectorAll<HTMLButtonElement>('.bs-tab');
+    const cards = gridEl.querySelectorAll<HTMLElement>('.bs-card');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('is-active'));
+        tab.classList.add('is-active');
+        const filter = (tab.dataset.filter ?? 'all').toLowerCase();
+        cards.forEach(card => {
+          const match = filter === 'all' || (card.dataset.ptype ?? '').toLowerCase() === filter;
+          card.style.display = match ? '' : 'none';
+        });
+      });
+    });
+  }
+</script>

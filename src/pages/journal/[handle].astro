@@ -1,0 +1,206 @@
+---
+// ============================================================
+//  Article detail. Missing → 404; transient error → 503.
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import Breadcrumbs from '~/components/layout/Breadcrumbs.astro';
+import Button from '~/components/ui/Button.astro';
+import { getArticle } from '~/lib/shopify';
+import { SITE } from '~/config/site';
+import type { Article } from '~/lib/shopify/types';
+
+export const prerender = false;
+
+const { handle } = Astro.params;
+const origin = Astro.url.origin;
+
+let article: Article | null = null;
+let loadFailed = false;
+try {
+  article = await getArticle(handle!, 'news');
+} catch (err) {
+  loadFailed = true;
+  console.error('[article] load failed:', (err as Error).message);
+}
+
+if (loadFailed) {
+  Astro.response.status = 503;
+} else if (!article) {
+  Astro.response.status = 404;
+}
+
+const date = article?.publishedAt
+  ? new Date(article.publishedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  : null;
+
+// Clean meta description + BlogPosting structured data.
+const metaDesc = article
+  ? (article.seo?.description || article.excerpt || `${article.title} — from the ${SITE.name} journal.`)
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 160)
+  : undefined;
+const articleLd = article
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'BlogPosting',
+      headline: article.title,
+      description: metaDesc,
+      ...(article.image?.url ? { image: [article.image.url] } : {}),
+      ...(article.publishedAt ? { datePublished: article.publishedAt } : {}),
+      ...(article.author ? { author: { '@type': 'Person', name: article.author } } : {}),
+      mainEntityOfPage: Astro.url.href,
+      publisher: {
+        '@type': 'Organization',
+        name: SITE.name,
+        logo: { '@type': 'ImageObject', url: `${origin}/favicon.svg` },
+      },
+    }
+  : undefined;
+
+// Social-share links (server-built from the request URL + title)
+const shareUrl = Astro.url.href;
+const shareTitle = article?.title ?? '';
+const enc = encodeURIComponent;
+const shareLinks = [
+  { label: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${enc(shareUrl)}`, svg: '<path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>' },
+  { label: 'X', href: `https://twitter.com/intent/tweet?url=${enc(shareUrl)}&text=${enc(shareTitle)}`, svg: '<path d="M18 4h3l-7 8 8 11h-6l-5-7-6 7H2l8-9L2 4h6l4 6 6-6Z"/>' },
+  { label: 'LinkedIn', href: `https://www.linkedin.com/sharing/share-offsite/?url=${enc(shareUrl)}`, svg: '<path d="M4.98 3.5A2.5 2.5 0 1 1 5 8.5a2.5 2.5 0 0 1-.02-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.83-2.05 3.77-2.05 4.03 0 4.78 2.65 4.78 6.1V21h-4v-5.4c0-1.3-.02-2.96-1.8-2.96-1.8 0-2.08 1.4-2.08 2.86V21H9z"/>' },
+  { label: 'WhatsApp', href: `https://wa.me/?text=${enc(shareTitle + ' ' + shareUrl)}`, svg: '<path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.7-.1-.4-.1-.9-.3-1.6-.6-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8 0-1.3.7-2 .9-2.2.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.3 0 .5l-.4.6c-.2.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.2.1.4.1.5-.1l.6-.8c.2-.2.4-.2.6-.1l1.8.9c.2.1.4.2.5.3.1.3.1.6-.1 1z"/>' },
+];
+---
+
+{
+  article ? (
+    <BaseLayout
+      title={article.seo?.title ?? article.title}
+      description={metaDesc}
+      image={article.image?.url}
+      imageAlt={article.image?.altText ?? article.title}
+      type="article"
+      jsonLd={articleLd}
+    >
+      <article class="wrap article">
+        <div class="article__head">
+          <Breadcrumbs
+            class="article__crumbs"
+            items={[{ label: 'Home', href: '/' }, { label: 'Journal', href: '/journal' }, { label: article.title }]}
+          />
+          <div class="article__meta" style="margin-top:16px;">
+            {date && <span>{date}</span>}
+            {date && article.author && <span>·</span>}
+            {article.author && <span>{article.author}</span>}
+          </div>
+          <h1 class="masthead article__title">{article.title}</h1>
+        </div>
+
+        {article.image && (
+          <div class="article__hero">
+            <img src={article.image.url} alt={article.image.altText ?? article.title} />
+          </div>
+        )}
+
+        <div class="rte article__body" set:html={article.contentHtml} />
+
+        {/* ── Social share ── */}
+        <div class="article__share">
+          <span class="article__share-label">Share this article</span>
+          <div class="article__share-btns">
+            {shareLinks.map((s) => (
+              <a class="article__share-btn" href={s.href} target="_blank" rel="noopener" aria-label={`Share on ${s.label}`}>
+                <svg viewBox="0 0 24 24" fill="currentColor" set:html={s.svg} />
+              </a>
+            ))}
+            <button type="button" class="article__share-btn" data-copy-link aria-label="Copy link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+
+        {/* ── Leave a comment ── */}
+        <section class="article__comments">
+          <h2 class="article__comments-title">Leave a Comment</h2>
+          <p class="article__comments-note">Your email address will not be published. Required fields are marked *</p>
+          <form class="comment-form" id="commentForm" novalidate>
+            <div class="comment-form__row">
+              <div class="comment-field">
+                <label for="cName">Name *</label>
+                <input id="cName" type="text" placeholder="Your name" autocomplete="name" required>
+              </div>
+              <div class="comment-field">
+                <label for="cEmail">Email *</label>
+                <input id="cEmail" type="email" placeholder="you@email.com" autocomplete="email" required>
+              </div>
+            </div>
+            <div class="comment-field">
+              <label for="cMessage">Comment *</label>
+              <textarea id="cMessage" placeholder="Share your thoughts…" required></textarea>
+            </div>
+            <label class="comment-form__save">
+              <input type="checkbox" id="cSave">
+              <span>Save my name and email in this browser for the next time I comment.</span>
+            </label>
+            <button type="submit" class="comment-form__submit">
+              Post Comment
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <p class="comment-form__success" id="commentSuccess" hidden>✓ Thanks! Your comment has been submitted and is awaiting moderation.</p>
+          </form>
+        </section>
+      </article>
+
+      <script is:inline>
+        (function () {
+          // Copy current page link
+          var copyBtn = document.querySelector('[data-copy-link]');
+          if (copyBtn) {
+            copyBtn.addEventListener('click', function () {
+              var done = function () {
+                var orig = copyBtn.getAttribute('aria-label');
+                copyBtn.classList.add('is-copied');
+                copyBtn.setAttribute('aria-label', 'Link copied');
+                setTimeout(function () { copyBtn.classList.remove('is-copied'); copyBtn.setAttribute('aria-label', orig); }, 1600);
+              };
+              if (navigator.clipboard) navigator.clipboard.writeText(location.href).then(done, done);
+              else done();
+            });
+          }
+          // Comment form — client-side validate → thank-you (no backend in the mockup)
+          var form = document.getElementById('commentForm');
+          if (form) {
+            form.addEventListener('submit', function (e) {
+              e.preventDefault();
+              var bad = null;
+              form.querySelectorAll('input[required], textarea[required]').forEach(function (el) {
+                var ok = el.value.trim() !== '' && (el.type !== 'email' || /.+@.+\..+/.test(el.value));
+                el.classList.toggle('is-err', !ok);
+                if (!ok && !bad) bad = el;
+              });
+              if (bad) { bad.focus(); return; }
+              form.querySelector('#cName').closest('.comment-form__row').style.display = 'none';
+              form.querySelector('#cMessage').closest('.comment-field').style.display = 'none';
+              form.querySelector('.comment-form__save').style.display = 'none';
+              form.querySelector('.comment-form__submit').style.display = 'none';
+              var ok = document.getElementById('commentSuccess');
+              ok.hidden = false;
+            });
+          }
+        })();
+      </script>
+    </BaseLayout>
+  ) : (
+    <BaseLayout title={loadFailed ? 'Something went wrong' : 'Article not found'}>
+      <div class="wrap empty-state">
+        <p class="eyebrow kicker">{loadFailed ? 'Error 503' : 'Error 404'}</p>
+        <h2 class="masthead">{loadFailed ? 'Something went wrong' : 'Article not found'}</h2>
+        <p>
+          {loadFailed
+            ? "We couldn't load this article right now. Please try again shortly."
+            : "We couldn't find that article."}
+        </p>
+        <Button href="/journal" variant="news">Back to the journal</Button>
+      </div>
+    </BaseLayout>
+  )
+}

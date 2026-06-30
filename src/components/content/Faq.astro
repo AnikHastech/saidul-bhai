@@ -1,0 +1,27 @@
+---
+// Accessible FAQ accordion (native <details>). No JS required.
+import Icon from '~/components/ui/Icon.astro';
+
+interface QA {
+  q: string;
+  a: string;
+}
+interface Props {
+  items: QA[];
+}
+const { items } = Astro.props;
+---
+
+<div class="faq">
+  {
+    items.map((item, i) => (
+      <details class="faq__item" open={i === 0}>
+        <summary class="faq__q">
+          {item.q}
+          <Icon name="plus" size={20} class="faq__icon" />
+        </summary>
+        <div class="faq__a" set:html={item.a} />
+      </details>
+    ))
+  }
+</div>

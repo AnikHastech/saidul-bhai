@@ -1,0 +1,30 @@
+---
+// Instagram grid — static local imagery. Swap for a feed later.
+import Icon from '~/components/ui/Icon.astro';
+
+const posts = [1, 2, 3, 4, 5, 6];
+---
+
+<section class="home-section">
+  <div class="wrap">
+    <div class="section-heading home-section__head">
+      <div>
+        <span class="eyebrow kicker">@asmaz</span>
+        <h2 class="masthead section-heading__title">Tag us <em style="font-style:normal;color:var(--signal);">#asmazdrop</em></h2>
+      </div>
+      <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" class="insta__handle">
+        <Icon name="arrowUpRight" size={16} /> Follow @asmaz
+      </a>
+    </div>
+    <div class="insta__grid">
+      {
+        posts.map((n) => (
+          <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" class="insta-post">
+            <img src={`/images/insta-${n}.jpg`} alt={`Instagram post ${n}`} loading="lazy" />
+            <span class="insta-post__overlay"><Icon name="heart" size={22} /></span>
+          </a>
+        ))
+      }
+    </div>
+  </div>
+</section>

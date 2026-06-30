@@ -1,0 +1,47 @@
+---
+// ============================================================
+//  Button — shared CTA primitive. Renders <a> with href, else
+//  <button>. Variants encode the magazine action hierarchy:
+//  news = primary (black), deal = signal-red express, cyber =
+//  yellow highlight, outline / ghost = quiet.
+// ============================================================
+import { cn } from '~/lib/utils';
+
+type Variant = 'news' | 'deal' | 'cyber' | 'outline' | 'ghost';
+type Size = 'sm' | 'md' | 'lg';
+
+interface Props {
+  href?: string;
+  variant?: Variant;
+  size?: Size;
+  block?: boolean;
+  type?: 'button' | 'submit';
+  class?: string;
+  disabled?: boolean;
+  [key: string]: unknown;
+}
+
+const {
+  href,
+  variant = 'news',
+  size = 'md',
+  block = false,
+  type = 'button',
+  class: className,
+  disabled = false,
+  ...rest
+} = Astro.props;
+
+const classes = cn('btn', `btn--${variant}`, `btn--${size}`, block && 'btn--block', className);
+const Tag = href ? 'a' : 'button';
+---
+
+<Tag
+  class={classes}
+  href={href}
+  type={href ? undefined : type}
+  aria-disabled={disabled ? 'true' : undefined}
+  {...rest}
+>
+  <slot />
+</Tag>

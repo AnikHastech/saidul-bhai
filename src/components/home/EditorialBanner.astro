@@ -1,0 +1,34 @@
+---
+// Full-width editorial feature: image + copy + CTA.
+import Button from '~/components/ui/Button.astro';
+import Icon from '~/components/ui/Icon.astro';
+
+interface Props {
+  href?: string;
+}
+const { href = '/collections' } = Astro.props;
+---
+
+<section class="home-section">
+  <div class="wrap">
+    <div class="editorial">
+      <div class="editorial__media">
+        <img src="/images/editorial.jpg" alt="Trade-in your old gear" loading="lazy" />
+      </div>
+      <div class="editorial__body">
+        <span class="eyebrow" style="color:var(--cyber);">The asmaz promise</span>
+        <h2 class="editorial__title">Upgrade smarter.<br /><em>Trade in, trade up.</em></h2>
+        <p class="editorial__text">
+          Send us your old device and get instant credit toward the latest drop. Free, fast and
+          fully insured — with honest valuations and no hidden fees.
+        </p>
+        <div>
+          <Button href={href} variant="cyber" size="lg">
+            Start a trade-in
+            <Icon name="arrowRight" size={18} />
+          </Button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

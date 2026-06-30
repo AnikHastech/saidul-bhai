@@ -1,0 +1,71 @@
+---
+// ============================================================
+//  Shop by Category — exact asymmetric bento port. The six tile
+//  slots are filled from the store's real collections (image,
+//  title, link); local images are the fallback.
+// ============================================================
+import type { Collection } from '~/lib/shopify/types';
+
+interface Props {
+  collections: Collection[];
+}
+const { collections } = Astro.props;
+
+const TILES = [
+  { cls: 'cat-tile cat-feature invert', img: '/images/cat-laptops.jpg', kicker: 'Featured Department', count: 'Shop the edit' },
+  { cls: 'cat-tile cat-tall', img: '/images/cat-mobile.jpg', kicker: '', count: 'Shop now' },
+  { cls: 'cat-tile cat-tall', img: '/images/cat-audio.jpg', kicker: '', count: 'Shop now' },
+  { cls: 'cat-tile cat-half', img: '/images/cat-cameras.jpg', kicker: '', count: 'Shop now' },
+  { cls: 'cat-tile cat-half', img: '/images/cat-wearables.jpg', kicker: '', count: 'Shop now' },
+  { cls: 'cat-tile cat-wide', img: '/images/cat-gaming.jpg', kicker: '⚡ Trending now', count: 'Shop now' },
+];
+
+const tiles = collections.slice(0, 6).map((c, i) => ({
+  ...TILES[i],
+  title: c.title,
+  href: `/collections/${c.handle}`,
+  img: c.image?.url ?? TILES[i].img,
+}));
+---
+
+<section class="section-categories">
+  <div class="container">
+    <div class="section-head">
+      <div class="section-head-left">
+        <span class="label-kicker">{collections.length} Departments</span>
+        <h2>SHOP BY <em>CATEGORY.</em></h2>
+      </div>
+      <div class="section-head-right">
+        <a href="/collections" class="see-all-link">
+          View All Departments
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="cat-grid">
+      {
+        tiles.map((t) => (
+          <a href={t.href} class={t.cls}>
+            <img src={t.img} alt="" loading="lazy" />
+            <div class="overlay"></div>
+            <div class="body">
+              <div>
+                {t.kicker && <span class="kicker">{t.kicker}</span>}
+                <h3>{t.title}</h3>
+                <span class="count">{t.count}</span>
+              </div>
+              <span class="arrow">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </span>
+            </div>
+          </a>
+        ))
+      }
+    </div>
+  </div>
+</section>

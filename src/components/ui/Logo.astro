@@ -1,0 +1,26 @@
+---
+// ============================================================
+//  Logo — asmaz wordmark. Skewed mark + condensed wordmark with
+//  a signal-red period, plus an optional kicker. `tone="light"`
+//  inverts for the dark footer.
+// ============================================================
+import { SITE } from '~/config/site';
+import { cn } from '~/lib/utils';
+
+interface Props {
+  href?: string;
+  tone?: 'dark' | 'light';
+  showSub?: boolean;
+  class?: string;
+}
+
+const { href = '/', tone = 'dark', showSub = true, class: className } = Astro.props;
+---
+
+<a href={href} class={cn('logo', tone === 'light' && 'logo--light', className)} aria-label={SITE.name}>
+  <span class="logo__mark"><span>a</span></span>
+  <span>
+    <span class="logo__word">{SITE.name}<b>.</b></span>
+    {showSub && <span class="logo__sub">{SITE.sub}</span>}
+  </span>
+</a>

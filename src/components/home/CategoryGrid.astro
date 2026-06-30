@@ -1,0 +1,40 @@
+---
+// ============================================================
+//  CategoryGrid — bento of departments. First tile is the large
+//  feature; the rest fill the grid. Tiles come from Shopify
+//  collections (with their image) or a local fallback set.
+// ============================================================
+import Icon from '~/components/ui/Icon.astro';
+
+export interface CategoryTile {
+  title: string;
+  href: string;
+  image: string;
+  count?: string;
+}
+
+interface Props {
+  tiles: CategoryTile[];
+}
+const { tiles } = Astro.props;
+---
+
+<div class="cat-bento">
+  {
+    tiles.map((tile, i) => (
+      <a href={tile.href} class:list={['cat-tile', i === 0 && 'cat-tile--feature']}>
+        <img src={tile.image} alt={tile.title} loading="lazy" />
+        <span class="cat-tile__overlay" />
+        <div class="cat-tile__body">
+          <div>
+            <h3 class="cat-tile__title">{tile.title}</h3>
+            {tile.count && <p class="cat-tile__count">{tile.count}</p>}
+          </div>
+          <span class="cat-tile__arrow">
+            <Icon name="arrowRight" size={18} />
+          </span>
+        </div>
+      </a>
+    ))
+  }
+</div>

@@ -1,0 +1,20 @@
+---
+// ============================================================
+//  Badge — small uppercase label/tag. Tones map to the magazine
+//  signal palette (new = electric blue, deal = signal red).
+// ============================================================
+import { cn } from '~/lib/utils';
+
+type Tone = 'new' | 'deal' | 'cyber' | 'news' | 'soft';
+
+interface Props {
+  tone?: Tone;
+  class?: string;
+}
+
+const { tone = 'news', class: className } = Astro.props;
+---
+
+<span class={cn('badge', `badge--${tone}`, className)}>
+  <slot />
+</span>

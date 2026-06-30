@@ -1,0 +1,31 @@
+---
+// Slim promo banner for listing pages. Static / decorative.
+import Icon from '~/components/ui/Icon.astro';
+
+interface Props {
+  eyebrow?: string;
+  title?: string;
+  text?: string;
+  href?: string;
+  cta?: string;
+}
+const {
+  eyebrow = 'Members save more',
+  title = 'Unlock an extra 10% on your first order',
+  text = 'Join the Daily Drop and get a welcome code, early access to launches and members-only flash deals.',
+  href = '/account/login',
+  cta = 'Join free',
+} = Astro.props;
+---
+
+<aside class="promo-banner">
+  <div class="promo-banner__text">
+    <span class="eyebrow promo-banner__eyebrow">{eyebrow}</span>
+    <h3 class="promo-banner__title">{title}</h3>
+    <p class="promo-banner__body">{text}</p>
+  </div>
+  <a href={href} class="btn btn--cyber btn--md promo-banner__cta">
+    {cta}
+    <Icon name="arrowRight" size={16} />
+  </a>
+</aside>

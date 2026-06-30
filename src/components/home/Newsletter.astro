@@ -1,0 +1,20 @@
+---
+// Newsletter signup band (dark) with the async form island.
+import NewsletterForm from '~/components/react/NewsletterForm.tsx';
+---
+
+<section class="home-section home-section--news">
+  <div class="wrap">
+    <div class="newsletter__inner">
+      <div>
+        <span class="eyebrow" style="color:var(--cyber);">The Daily Drop</span>
+        <h2 class="newsletter__title">Never miss a <em>drop.</em></h2>
+        <p class="newsletter__text">
+          Get first access to launches, flash deals and editor picks — straight to your inbox,
+          a couple of times a week. No noise, just the good stuff.
+        </p>
+      </div>
+      <NewsletterForm client:idle />
+    </div>
+  </div>
+</section>

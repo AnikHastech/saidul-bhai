@@ -1,0 +1,37 @@
+---
+// ============================================================
+//  Price — current price with optional struck compare-at price
+//  and a saved-percent flag. Tabular figures for clean alignment.
+// ============================================================
+import { cn } from '~/lib/utils';
+import { formatMoney, isOnSale, discountPercent } from '~/lib/utils';
+
+interface Props {
+  amount: string | number | null | undefined;
+  compareAt?: string | number | null;
+  currency?: string;
+  size?: 'sm' | 'md' | 'lg';
+  showSave?: boolean;
+  class?: string;
+}
+
+const {
+  amount,
+  compareAt = null,
+  currency = 'USD',
+  size = 'md',
+  showSave = false,
+  class: className,
+} = Astro.props;
+
+const price = amount == null ? null : { amount: String(amount) };
+const compare = compareAt == null ? null : { amount: String(compareAt) };
+const onSale = isOnSale(price, compare);
+const pct = discountPercent(price, compare);
+---
+
+<span class={cn('price', `price--${size}`, onSale && 'price--sale', className)}>
+  <span class="price__now">{formatMoney(amount, currency)}</span>
+  {onSale && <span class="price__was">{formatMoney(compareAt, currency)}</span>}
+  {showSave && pct && <span class="price__save">−{pct}%</span>}
+</span>

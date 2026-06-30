@@ -1,0 +1,31 @@
+/* ============================================================
+   asmaz — PAGE-LEVEL helpers + section rhythm.
+   (Phase 2 extends this with shop / product / cart sections.)
+   ============================================================ */
+.section { padding-block: 64px; }
+.section--bordered { border-top: 1px solid var(--line); }
+@media (min-width: 768px) { .section { padding-block: 80px; } }
+
+/* ---------- Phase-1 home shell preview ---------- */
+.hero-preview__title {
+  max-width: 56rem;
+  margin-top: 16px;
+  font-size: clamp(3rem, 8vw, 4.5rem);
+  color: var(--news);
+}
+.hero-preview__title .accent { color: var(--signal); }
+.hero-preview__lead { max-width: 36rem; margin-top: 20px; color: var(--graphite); }
+.hero-preview__cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 32px;
+}
+.preview-card { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--cool); padding: 24px; }
+.preview-card__img { aspect-ratio: 1; border-radius: var(--r-md); background: var(--line-soft); }
+.preview-card__name { margin-top: 12px; font-family: var(--f-head); font-size: 1.125rem; font-weight: 700; text-transform: uppercase; }
+.preview-card__price { font-family: var(--f-head); color: var(--signal-strong); }
+@media (min-width: 640px) { .preview-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1024px) { .preview-grid { grid-template-columns: repeat(4, 1fr); } }

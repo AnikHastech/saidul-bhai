@@ -1,0 +1,146 @@
+---
+// ============================================================
+//  Announcement — top utility bar. Rotating promo messages on the
+//  left (cyber-yellow highlights), utility links + locale on the
+//  right. Rotation handled by a tiny progressive-enhancement script.
+// ============================================================
+import { SITE } from '~/config/site';
+import Icon from '~/components/ui/Icon.astro';
+import type { CurrencyOption } from '~/lib/shopify';
+
+interface Props {
+  /** Sellable currencies (empty → static locale label). */
+  currencies?: CurrencyOption[];
+  /** Buyer's current market country (ISO-2). */
+  country?: string;
+}
+const { currencies = [], country = 'US' } = Astro.props;
+
+const { announcements, topbarLinks, locale } = SITE;
+// The currency matching the active country, for the trigger label.
+const active = currencies.find((c) => c.country === country) ?? currencies[0];
+const localeLabel = active ? `EN / ${active.currency}` : locale;
+---
+
+<div class="topbar">
+  <div class="wrap topbar__inner">
+    <div class="topbar__rotator" data-announce-rotator>
+      {
+        announcements.map((msg, i) => (
+          <span class:list={['topbar__msg', i === 0 && 'is-active']} set:html={msg} />
+        ))
+      }
+    </div>
+
+    <div class="topbar__links">
+      {
+        topbarLinks.map((link, i) => (
+          <>
+            {i > 0 && <span class="topbar__sep" />}
+            <a href={link.href} class="topbar__link">{link.label}</a>
+          </>
+        ))
+      }
+      <span class="topbar__sep"></span>
+      {currencies.length > 0 ? (
+        <div class="topbar__currency" data-currency-menu>
+          <button
+            type="button"
+            class="topbar__locale topbar__currency-trigger"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+            data-current={country}
+          >
+            <Icon name="globe" size={12} />
+            <span class="topbar__currency-label">{localeLabel}</span>
+            <svg class="topbar__currency-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+          </button>
+
+          <div class="topbar__currency-panel" role="listbox" aria-label="Select currency" hidden>
+            <p class="topbar__currency-head">Choose currency</p>
+            {currencies.map((c) => (
+              <button
+                type="button"
+                class:list={['topbar__currency-opt', c.country === country && 'is-active']}
+                role="option"
+                aria-selected={c.country === country}
+                data-country={c.country}
+              >
+                <span class="topbar__currency-sym" aria-hidden="true">{c.symbol}</span>
+                <span class="topbar__currency-code">{c.currency}</span>
+                <svg class="topbar__currency-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <button type="button" class="topbar__locale">
+          <Icon name="globe" size={12} />
+          {locale}
+        </button>
+      )}
+    </div>
+  </div>
+</div>
+
+<script>
+  // Cycle the announcement messages every 4s (no-op if only one).
+  const rotator = document.querySelector<HTMLElement>('[data-announce-rotator]');
+  if (rotator) {
+    const items = Array.from(rotator.querySelectorAll<HTMLElement>('.topbar__msg'));
+    if (items.length > 1) {
+      let current = 0;
+      setInterval(() => {
+        items[current].classList.remove('is-active');
+        current = (current + 1) % items.length;
+        items[current].classList.add('is-active');
+      }, 4000);
+    }
+  }
+
+  // Currency dropdown — custom listbox. Picking a market persists a cookie and
+  // reloads so the server re-fetches every price in that currency (@inContext).
+  const curMenu = document.querySelector<HTMLElement>('[data-currency-menu]');
+  if (curMenu) {
+    const topbar = curMenu.closest<HTMLElement>('.topbar');
+    const trigger = curMenu.querySelector<HTMLButtonElement>('.topbar__currency-trigger');
+    const panel = curMenu.querySelector<HTMLElement>('.topbar__currency-panel');
+
+    const setOpen = (open: boolean) => {
+      if (!panel || !trigger) return;
+      panel.hidden = !open;
+      trigger.setAttribute('aria-expanded', String(open));
+      topbar?.classList.toggle('is-cur-open', open);
+      if (open) {
+        // Keep the selected currency in view when the list is long.
+        panel.querySelector<HTMLElement>('.is-active')?.scrollIntoView({ block: 'nearest' });
+      }
+    };
+
+    trigger?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setOpen(panel?.hidden ?? true);
+    });
+
+    panel?.querySelectorAll<HTMLButtonElement>('.topbar__currency-opt').forEach((opt) => {
+      opt.addEventListener('click', () => {
+        const country = opt.dataset.country;
+        if (!country || country === trigger?.dataset.current) {
+          setOpen(false);
+          return;
+        }
+        document.cookie = `asmaz_country=${country}; path=/; max-age=31536000; samesite=lax`;
+        // Drop the captured-price cache so the cart re-prices in the new currency.
+        try { localStorage.removeItem('asmaz:price-cache'); } catch {}
+        window.location.reload();
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!curMenu.contains(e.target as Node)) setOpen(false);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    });
+  }
+</script>

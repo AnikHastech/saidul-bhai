@@ -1,0 +1,234 @@
+---
+// ============================================================
+//  Style Guide — a living reference for the asmaz design system:
+//  colour tokens, typography scale, buttons, badges, form
+//  elements and radius/shadow tokens. Static (no Shopify data).
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import PageHeader from '~/components/layout/PageHeader.astro';
+import Button from '~/components/ui/Button.astro';
+
+export const prerender = false;
+
+const surfaces = [
+  { name: 'News Black', token: '--news', hex: '#050505' },
+  { name: 'Ink', token: '--ink', hex: '#0f1115' },
+  { name: 'Graphite', token: '--graphite', hex: '#1a1d24' },
+  { name: 'Paper', token: '--paper', hex: '#ffffff' },
+  { name: 'Cool Gray', token: '--cool', hex: '#f2f4f7' },
+  { name: 'Mist', token: '--mist', hex: '#f8f9fb' },
+  { name: 'Muted', token: '--muted', hex: '#667085' },
+  { name: 'Line', token: '--line', hex: '#d9dee7' },
+];
+
+const signals = [
+  { name: 'Signal Red', token: '--signal', hex: '#ef233c' },
+  { name: 'Signal Strong', token: '--signal-strong', hex: '#d31c33' },
+  { name: 'Electric Blue', token: '--electric', hex: '#2563eb' },
+  { name: 'Cyber Yellow', token: '--cyber', hex: '#ffd60a' },
+  { name: 'Success', token: '--success', hex: '#16a34a' },
+  { name: 'Danger', token: '--danger', hex: '#dc2626' },
+];
+
+const typeScale = [
+  { label: 'Display', size: 'clamp(2.6rem, 7vw, 4.4rem)', text: 'Daily Tech Drop' },
+  { label: 'H1 · Masthead', size: 'clamp(2rem, 5vw, 3rem)', text: 'Shop Everything' },
+  { label: 'H2 · Section', size: '1.75rem', text: 'Best Sellers' },
+  { label: 'H3 · Card', size: '1.2rem', text: 'KB Phone 15 Pro' },
+  { label: 'Eyebrow', size: '0.8rem', text: 'The Catalogue', spaced: true },
+];
+
+const radii = [
+  { name: '--r-sm', val: '6px' },
+  { name: '--r-md', val: '8px' },
+  { name: '--r-lg', val: '12px' },
+  { name: '--r-pill', val: '999px' },
+];
+const shadows = [
+  { name: '--sh-sm', val: 'var(--sh-sm)' },
+  { name: '--sh-md', val: 'var(--sh-md)' },
+  { name: '--sh-lg', val: 'var(--sh-lg)' },
+  { name: '--sh-deal', val: 'var(--sh-deal)' },
+];
+---
+
+<BaseLayout title="Style Guide" description="The asmaz design system — colour, type, components and tokens." noindex>
+  <PageHeader
+    eyebrow="Design System"
+    title="Style Guide"
+    description="Every colour, type style and component the storefront is built from — one living reference."
+    crumbs={[{ label: 'Home', href: '/' }, { label: 'Style Guide' }]}
+  />
+
+  <div class="wrap mp">
+
+    <!-- COLOURS -->
+    <section class="mp-section">
+      <div class="mp-head">
+        <span class="mp-head__n">01</span>
+        <h2>Colour</h2>
+        <p>Near-black surfaces, one signal-red accent, electric-blue and cyber-yellow signals.</p>
+      </div>
+
+      <p class="sg-sublabel">Surfaces &amp; ink</p>
+      <div class="sg-swatches">
+        {surfaces.map((c) => (
+          <div class="sg-swatch">
+            <div class="sg-swatch__chip" style={`background:${c.hex};`}></div>
+            <div class="sg-swatch__meta">
+              <span class="sg-swatch__name">{c.name}</span>
+              <span class="sg-swatch__var">{c.token}</span>
+              <span class="sg-swatch__hex">{c.hex}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p class="sg-sublabel" style="margin-top:28px;">Signals</p>
+      <div class="sg-swatches">
+        {signals.map((c) => (
+          <div class="sg-swatch">
+            <div class="sg-swatch__chip" style={`background:${c.hex};`}></div>
+            <div class="sg-swatch__meta">
+              <span class="sg-swatch__name">{c.name}</span>
+              <span class="sg-swatch__var">{c.token}</span>
+              <span class="sg-swatch__hex">{c.hex}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- TYPOGRAPHY -->
+    <section class="mp-section">
+      <div class="mp-head">
+        <span class="mp-head__n">02</span>
+        <h2>Typography</h2>
+        <p>Barlow Condensed for headlines, Inter for UI &amp; body.</p>
+      </div>
+      <div class="sg-type">
+        {typeScale.map((t) => (
+          <div class="sg-type__row">
+            <span class="sg-type__label">{t.label}</span>
+            <span class="sg-type__sample" style={`font-size:${t.size};${t.spaced ? 'letter-spacing:.18em;' : ''}`}>{t.text}</span>
+          </div>
+        ))}
+        <div class="sg-type__row">
+          <span class="sg-type__label">Body · Inter</span>
+          <span class="sg-type__sample--body" style="font-size:15px;max-width:560px;">
+            We test everything, write honestly, and only stock the gear we'd actually recommend.
+            Fewer things, chosen with far more care — the standard we build toward, one issue at a time.
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- BUTTONS -->
+    <section class="mp-section">
+      <div class="mp-head">
+        <span class="mp-head__n">03</span>
+        <h2>Buttons</h2>
+        <p>The action hierarchy — primary, express-deal, highlight and quiet.</p>
+      </div>
+      <div class="sg-stack">
+        <div>
+          <p class="sg-sublabel">Variants</p>
+          <div class="sg-row">
+            <Button variant="news">Add to cart</Button>
+            <Button variant="deal">Buy it now</Button>
+            <Button variant="cyber">Save 20%</Button>
+            <Button variant="outline">View details</Button>
+            <Button variant="ghost">Cancel</Button>
+          </div>
+        </div>
+        <div>
+          <p class="sg-sublabel">Sizes</p>
+          <div class="sg-row">
+            <Button variant="news" size="sm">Small</Button>
+            <Button variant="news" size="md">Medium</Button>
+            <Button variant="news" size="lg">Large</Button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BADGES & FLAGS -->
+    <section class="mp-section">
+      <div class="mp-head">
+        <span class="mp-head__n">04</span>
+        <h2>Badges &amp; Flags</h2>
+        <p>Product flags and status pills used across cards and the PDP.</p>
+      </div>
+      <div class="sg-row">
+        <span class="sg-flag red">−28%</span>
+        <span class="sg-flag blue">NEW</span>
+        <span class="sg-flag yellow">HOT</span>
+        <span class="sg-flag ink">EDITOR'S PICK</span>
+        <span class="sg-flag red">SALE</span>
+        <span class="sg-flag blue">RESTOCKED</span>
+      </div>
+    </section>
+
+    <!-- FORM ELEMENTS -->
+    <section class="mp-section">
+      <div class="mp-head">
+        <span class="mp-head__n">05</span>
+        <h2>Form Elements</h2>
+        <p>Inputs, selects and text areas with the focus treatment.</p>
+      </div>
+      <div class="sg-form">
+        <div class="sg-field">
+          <label for="sgName">Full name</label>
+          <input class="sg-input" id="sgName" type="text" placeholder="Jane Mercer" />
+        </div>
+        <div class="sg-field">
+          <label for="sgEmail">Email</label>
+          <input class="sg-input" id="sgEmail" type="email" placeholder="you@asmaz.tech" />
+        </div>
+        <div class="sg-field">
+          <label for="sgCat">Category</label>
+          <select class="sg-select" id="sgCat">
+            <option>Audio</option>
+            <option>Mobile</option>
+            <option>Laptops</option>
+            <option>Gaming</option>
+          </select>
+        </div>
+        <div class="sg-field" style="grid-column:1/-1;">
+          <label for="sgMsg">Message</label>
+          <textarea class="sg-textarea" id="sgMsg" rows="3" placeholder="Tell us what you're after…"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- TOKENS -->
+    <section class="mp-section">
+      <div class="mp-head">
+        <span class="mp-head__n">06</span>
+        <h2>Radius &amp; Shadow</h2>
+        <p>The elevation and corner tokens that shape every surface.</p>
+      </div>
+
+      <p class="sg-sublabel">Radius</p>
+      <div class="sg-tokens">
+        {radii.map((r) => (
+          <div class="sg-token">
+            <span class="sg-token__box" style={`border-radius:${r.val};`}></span>
+            <span class="sg-token__name"><b>{r.name}</b>{r.val}</span>
+          </div>
+        ))}
+      </div>
+
+      <p class="sg-sublabel" style="margin-top:28px;">Shadow</p>
+      <div class="sg-tokens">
+        {shadows.map((s) => (
+          <div class="sg-token">
+            <span class="sg-token__box" style={`box-shadow:${s.val};border-color:transparent;background:var(--paper);`}></span>
+            <span class="sg-token__name"><b>{s.name}</b>elevation</span>
+          </div>
+        ))}
+      </div>
+    </section>
+
+  </div>
+</BaseLayout>

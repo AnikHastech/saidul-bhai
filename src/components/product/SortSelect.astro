@@ -1,0 +1,29 @@
+---
+// Sort control — native select inside a GET form (resets cursor on
+// change). Every other active param (search q, facet filters, price)
+// is re-emitted as a hidden input so it survives the sort change.
+import type { SortOption } from '~/lib/shopify/types';
+import { paramPairs } from '~/lib/filters';
+import Icon from '~/components/ui/Icon.astro';
+
+interface Props {
+  options: SortOption[];
+  value: string;
+  action: string;
+  url: URL;
+}
+const { options, value, action, url } = Astro.props;
+const hidden = paramPairs(url, ['sort', 'after', 'before']);
+---
+
+<form method="get" action={action} class="sort">
+  {hidden.map((h) => <input type="hidden" name={h.name} value={h.value} />)}
+  <label for="sort" class="sr-only">Sort by</label>
+  <div class="sort__shell">
+    <span class="eyebrow sort__label">Sort</span>
+    <select id="sort" name="sort" onchange="this.form.submit()" class="sort__select">
+      {options.map((o) => <option value={o.value} selected={o.value === value}>{o.label}</option>)}
+    </select>
+    <Icon name="chevronDown" size={15} class="sort__chev" />
+  </div>
+</form>

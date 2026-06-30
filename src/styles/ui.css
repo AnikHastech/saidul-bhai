@@ -1,0 +1,176 @@
+/* ============================================================
+   asmaz — UI PRIMITIVES: logo, button, badge, price, heading
+   ============================================================ */
+
+/* ---------- Logo ---------- */
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo__mark {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-sm);
+  background: var(--news);
+  color: var(--cyber);
+  font-family: var(--f-head);
+  font-weight: 900;
+  font-size: 22px;
+  line-height: 1;
+  transform: skewX(-6deg);
+}
+.logo__mark > span {
+  display: inline-block;
+  transform: skewX(6deg);
+}
+.logo__word {
+  display: block;
+  font-family: var(--f-head);
+  font-weight: 900;
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--news);
+}
+.logo__word b { color: var(--signal); font-weight: 900; }
+.logo__sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--signal);
+}
+/* Light variant for dark surfaces (footer). */
+.logo--light .logo__mark { background: #fff; color: var(--news); }
+.logo--light .logo__word { color: #fff; }
+
+/* ---------- Button ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--r-md);
+  font-family: var(--f-body);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  user-select: none;
+  transition: background var(--t-fast) var(--e-out), color var(--t-fast),
+    border-color var(--t-fast), filter var(--t-fast);
+}
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.btn--block { width: 100%; }
+
+/* sizes */
+.btn--sm { height: 36px; padding: 0 16px; font-size: 0.72rem; }
+.btn--md { height: 44px; padding: 0 24px; font-size: 0.8rem; }
+.btn--lg { height: 56px; padding: 0 32px; font-size: 0.875rem; }
+
+/* variants */
+.btn--news { background: var(--news); color: #fff; }
+.btn--news:hover { background: var(--signal); }
+.btn--deal { background: var(--signal); color: #fff; box-shadow: var(--sh-deal); }
+.btn--deal:hover { background: var(--signal-strong); }
+.btn--cyber { background: var(--cyber); color: var(--news); }
+.btn--cyber:hover { filter: brightness(0.95); }
+.btn--outline { border: 1px solid var(--line); color: var(--ink); }
+.btn--outline:hover { border-color: var(--news); background: rgba(5, 5, 5, 0.03); }
+.btn--ghost { color: var(--ink); }
+.btn--ghost:hover { background: rgba(5, 5, 5, 0.05); }
+
+/* ---------- Badge ---------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.badge--new { background: var(--electric); color: #fff; }
+.badge--deal { background: var(--signal); color: #fff; }
+.badge--cyber { background: var(--cyber); color: var(--news); }
+.badge--news { background: var(--news); color: #fff; }
+.badge--soft { background: var(--cool); color: var(--ink); }
+
+/* ---------- Price ---------- */
+.price {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.price__now {
+  font-family: var(--f-head);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.price--sm .price__now { font-size: 0.875rem; }
+.price--md .price__now { font-size: 1rem; }
+.price--lg .price__now { font-size: 1.25rem; }
+.price--sale .price__now { color: var(--signal-strong); }
+.price__was {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted-2);
+  text-decoration: line-through;
+}
+.price__save {
+  border-radius: 3px;
+  background: var(--signal);
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+/* ---------- Section heading ---------- */
+.section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+.section-heading--center {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.section-heading__title {
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  color: var(--news);
+}
+.section-heading__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 2px solid var(--news);
+  padding-bottom: 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--news);
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+.section-heading__link:hover { border-color: var(--signal); color: var(--signal); }
+.section-heading__link svg { transition: transform var(--t-fast) var(--e-out); }
+.section-heading__link:hover svg { transform: translateX(2px); }

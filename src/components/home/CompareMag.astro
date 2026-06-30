@@ -1,0 +1,126 @@
+---
+import { formatMoney, isOnSale } from '~/lib/utils';
+import type { ProductCard } from '~/lib/shopify/types';
+
+interface Props {
+  products: ProductCard[];
+}
+const { products } = Astro.props;
+const prods = products.slice(0, 3);
+
+// Hardcoded spec rows matching the original's buying-guide format
+const SPECS = [
+  { label: 'Category', vals: ['Best Seller', 'Staff Pick', 'Budget Pick'] },
+  { label: 'Rating', vals: ['9.4 / 10', '8.9 / 10', '8.6 / 10'] },
+  { label: 'Availability', vals: ['In Stock', 'In Stock', 'In Stock'] },
+  { label: 'Shipping', vals: ['Free 2-Day', 'Free 2-Day', 'Free Standard'] },
+  { label: 'Warranty', vals: ['2 Years', '1 Year', '1 Year'] },
+  { label: 'Returns', vals: ['30 Days', '30 Days', '14 Days'] },
+  { label: "Editor's Score", vals: ['9.4 / 10', '8.9 / 10', '8.6 / 10'] },
+];
+---
+
+<section class="section-compare">
+  <div class="container">
+    <div class="compare-wrap">
+      <div class="compare-head">
+        <span class="label-kicker">Buying Guide</span>
+        <h2>WHICH ONE'S<br>RIGHT FOR <em>YOU?</em></h2>
+        <p>Three of our most-reviewed products side by side. Here's a clean comparison from our test bench to help you decide.</p>
+      </div>
+
+      <div class="compare-table-wrap">
+        <table class="compare-table">
+          <colgroup>
+            <col class="col-feat">
+            {prods.map(() => <col>)}
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="ct-feat-th"></th>
+              {prods.map((p) => {
+                const min = p.priceRange.minVariantPrice;
+                const compareAt = p.compareAtPriceRange?.minVariantPrice ?? null;
+                const onSale = isOnSale(min, compareAt);
+                return (
+                  <th class="ct-prod-th">
+                    <div class="ct-prod-inner">
+                      <a href={`/products/${p.handle}`} class="ct-prod-imglink">
+                        {p.featuredImage
+                          ? <img src={p.featuredImage.url} alt={p.featuredImage.altText ?? p.title} />
+                          : null}
+                      </a>
+                      <h3>
+                        <a href={`/products/${p.handle}`} class="ct-prod-title">
+                          {p.title.length > 22 ? p.title.slice(0, 22) + '…' : p.title}
+                        </a>
+                      </h3>
+                      <div class="ctprice">
+                        <span class="now">{formatMoney(min.amount, min.currencyCode)}</span>
+                        {onSale && compareAt && <span class="was">{formatMoney(compareAt.amount, compareAt.currencyCode)}</span>}
+                      </div>
+                    </div>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {SPECS.map((row) => (
+              <tr>
+                <td class="ct-feat-td">{row.label}</td>
+                {prods.map((_, i) => <td class="ct-val">{row.vals[i] ?? '—'}</td>)}
+              </tr>
+            ))}
+            <tr class="ct-cta-row">
+              <td class="ct-feat-td"></td>
+              {prods.map((p) => {
+                const min = p.priceRange.minVariantPrice;
+                return (
+                  <td>
+                    <button
+                      class="btn-ct ct-add"
+                      data-variant-id={p.firstVariantId}
+                      data-price={min.amount}
+                      data-currency={min.currencyCode}
+                      data-label={`Add to Cart — ${formatMoney(min.amount, min.currencyCode)}`}
+                    >
+                      Add to Cart — {formatMoney(min.amount, min.currencyCode)}
+                    </button>
+                  </td>
+                );
+              })}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { addItem } from '~/stores/cart';
+  import { cachePrice } from '~/stores/price-cache';
+
+  document.querySelector('.compare-table')?.addEventListener('click', async (e) => {
+    const btn = (e.target as Element).closest('.ct-add') as HTMLButtonElement | null;
+    if (!btn || btn.disabled) return;
+    e.preventDefault();
+
+    const variantId = btn.dataset.variantId ?? '';
+    if (!variantId) return;
+
+    if (btn.dataset.price && btn.dataset.currency)
+      cachePrice(variantId, { amount: btn.dataset.price, currencyCode: btn.dataset.currency });
+
+    const label = btn.dataset.label ?? 'Add to Cart';
+    btn.disabled = true;
+    btn.textContent = 'Adding…';
+    await addItem(variantId, 1, { open: true });
+    btn.textContent = '✓ Added!';
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = label;
+    }, 2000);
+  });
+</script>

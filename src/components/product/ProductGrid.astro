@@ -1,0 +1,17 @@
+---
+// Responsive product grid.
+import type { ProductCard as ProductCardType } from '~/lib/shopify/types';
+import ProductCard from './ProductCard.astro';
+import { cn } from '~/lib/utils';
+
+interface Props {
+  products: ProductCardType[];
+  class?: string;
+}
+
+const { products, class: className } = Astro.props;
+---
+
+<div class={cn('product-grid', className)}>
+  {products.map((product) => <ProductCard product={product} class="reveal" />)}
+</div>

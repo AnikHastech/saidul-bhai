@@ -1,0 +1,67 @@
+---
+// ============================================================
+//  CMS page — renders a Shopify "page" (shipping, returns, etc.)
+//  by handle. about/contact have dedicated routes that take
+//  precedence. Missing → 404; transient error → 503.
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import PageHeader from '~/components/layout/PageHeader.astro';
+import Button from '~/components/ui/Button.astro';
+import { SITE } from '~/config/site';
+import { getPage } from '~/lib/shopify';
+import type { ShopifyPage } from '~/lib/shopify/services/content';
+
+export const prerender = false;
+
+const { handle } = Astro.params;
+
+let page: ShopifyPage | null = null;
+let loadFailed = false;
+try {
+  page = await getPage(handle!);
+} catch (err) {
+  loadFailed = true;
+  console.error('[page] load failed:', (err as Error).message);
+}
+
+if (loadFailed) {
+  Astro.response.status = 503;
+} else if (!page) {
+  Astro.response.status = 404;
+}
+
+const title = handle!
+  .replace(/-/g, ' ')
+  .replace(/\b\w/g, (c) => c.toUpperCase());
+---
+
+{
+  page ? (
+    <BaseLayout
+      title={page.seo?.title ?? page.title}
+      description={page.seo?.description || page.bodySummary || `${page.title} — ${SITE.name}.`}
+    >
+      <PageHeader
+        eyebrow="asmaz"
+        title={page.title}
+        crumbs={[{ label: 'Home', href: '/' }, { label: page.title }]}
+      />
+      <div class="wrap prose-page">
+        <div class="rte prose-page__body" set:html={page.body} />
+      </div>
+    </BaseLayout>
+  ) : (
+    <BaseLayout title={loadFailed ? 'Something went wrong' : `${title} — not found`}>
+      <div class="wrap empty-state">
+        <p class="eyebrow kicker">{loadFailed ? 'Error 503' : 'Error 404'}</p>
+        <h2 class="masthead">{loadFailed ? 'Something went wrong' : 'Page not found'}</h2>
+        <p>
+          {loadFailed
+            ? "We couldn't load this page right now. Please try again shortly."
+            : `We couldn't find the “${title}” page. It may not be published yet.`}
+        </p>
+        <Button href="/" variant="news">Back home</Button>
+      </div>
+    </BaseLayout>
+  )
+}

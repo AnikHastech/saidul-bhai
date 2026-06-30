@@ -1,0 +1,952 @@
+---
+// ============================================================
+//  ShopExplorer — the magazine "Newsstand Control Deck" shop UI
+//  (masthead · section tabs · sort/density/refine · live grid ·
+//  popular search). Shared by /products and /collections/[handle]
+//  so every listing has the identical filter experience.
+//
+//  All facets (brands, colours, price buckets, ratings) and the
+//  card render model are derived from the `products` prop. Section
+//  tabs + per-product category membership come from `sections` +
+//  `catKeysOf`. The client-side filter/sort/density logic is the
+//  same verbatim port used by the original shop page.
+// ============================================================
+import QuickViewModal from '~/components/react/QuickViewModal';
+import { formatMoney, isOnSale, discountPercent } from '~/lib/utils';
+import type { ProductCard } from '~/lib/shopify/types';
+
+interface ShopSection { key: string; label: string }
+interface ShopStat { value: string; label: string }
+interface PopularChip { label: string; url: string; img: string }
+
+interface Props {
+  products: ProductCard[];
+  /** Section tabs shown after "All". Their keys must match catKeysOf output. */
+  sections?: ShopSection[];
+  /** Category keys a product belongs to (drives the section-tab filter). */
+  catKeysOf?: (p: ProductCard) => string[];
+  /** productId → recency rank (0 = newest). Powers NEW flags + "Newest" sort. */
+  newRank?: Map<string, number>;
+  kicker: string;
+  titleLead: string;
+  titleEm: string;
+  deck: string;
+  stats: ShopStat[];
+  popular?: PopularChip[];
+  emptyTitle?: string;
+  emptyBody?: string;
+}
+
+const {
+  products,
+  sections = [],
+  catKeysOf,
+  newRank,
+  kicker,
+  titleLead,
+  titleEm,
+  deck,
+  stats,
+  popular = [],
+  emptyTitle = 'Nothing matches',
+  emptyBody = 'No products fit this combination of filters. Try loosening a filter or two.',
+} = Astro.props as Props;
+
+const catKeys = (p: ProductCard): string[] => (catKeysOf ? catKeysOf(p) : []);
+
+// --- Derive filter facets from live data ---
+const COLOR_HEX: Record<string, string> = {
+  black: '#050505', white: '#FFFCF7', red: '#EF233C', blue: '#2563EB',
+  silver: '#B8BCC4', gold: '#C9A86A', navy: '#1A2540', green: '#16A34A',
+  gray: '#9CA3AF', grey: '#9CA3AF', pink: '#EC4899', purple: '#7C3AED',
+  orange: '#F97316', brown: '#92400E', yellow: '#F5C218', bronze: '#CD7F32',
+  spacegray: '#6E6E73', graphite: '#4A4A4A', rose: '#E79FA0', teal: '#0D9488',
+  natural: '#D2B48C', titanium: '#8D8D8D', coral: '#FF7F6E', midnight: '#1D1D2E',
+  starlight: '#E3DDD4',
+};
+// Deterministic hash (also reused for pseudo ratings below).
+const hash = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; };
+// Map a colour name to a CSS colour; unknown/odd names get a stable hued swatch
+// so every swatch renders even when the store uses non-standard colour names.
+const swatchColor = (name: string) => COLOR_HEX[name] ?? `hsl(${hash(name) % 360} 34% 55%)`;
+
+const colorKey = (v: string) => v.toLowerCase().replace(/[\s-]+/g, '');
+const colorsOf = (p: ProductCard): string[] => {
+  const opt = p.options?.find((o) => /colou?r/i.test(o.name));
+  return opt ? opt.optionValues.map((v) => colorKey(v.name)) : [];
+};
+
+// Per-colour variant data for interactive card swatches (one entry per unique
+// colour, so clicking a swatch can swap the card's image/price/variant).
+interface CardSwatch { value: string; hex: string; id: string; amount: string; currency: string; img: string }
+const swatchesOf = (p: ProductCard): CardSwatch[] => {
+  const optName = p.options?.find((o) => /colou?r/i.test(o.name))?.name ?? null;
+  if (!optName) return [];
+  const seen = new Set<string>();
+  const out: CardSwatch[] = [];
+  for (const v of p.cardVariants ?? []) {
+    const value = v.selectedOptions.find((o) => o.name === optName)?.value;
+    if (!value) continue;
+    const key = colorKey(value);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ value, hex: swatchColor(key), id: v.id, amount: v.price.amount, currency: v.price.currencyCode, img: v.image?.url ?? '' });
+  }
+  return out;
+};
+
+const brands = [...new Set(products.map((p) => (p.vendor ?? '').trim()).filter(Boolean))].sort();
+
+const colorOrder = new Map<string, string>();
+for (const p of products) for (const c of colorsOf(p)) if (!colorOrder.has(c)) colorOrder.set(c, swatchColor(c));
+const colors = [...colorOrder.entries()].slice(0, 10);
+
+const maxAmount = Math.max(100, ...products.map((p) => Math.ceil(Number(p.priceRange.minVariantPrice.amount) || 0)));
+const PRICE_MAX = Math.max(500, Math.ceil(maxAmount / 100) * 100);
+
+// 4 price buckets scaled to the catalogue
+const q = Math.round(PRICE_MAX / 4 / 10) * 10;
+const kfmt = (n: number) => (n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 ? 1 : 0)}K` : `$${n}`);
+const priceBuckets = [
+  { range: `0-${q}`, label: `Under ${kfmt(q)}` },
+  { range: `${q}-${q * 2}`, label: `${kfmt(q)}–${kfmt(q * 2)}` },
+  { range: `${q * 2}-${q * 3}`, label: `${kfmt(q * 2)}–${kfmt(q * 3)}` },
+  { range: `${q * 3}-${PRICE_MAX}`, label: `${kfmt(q * 3)}+` },
+];
+
+// Deterministic pseudo rating/reviews (Shopify has no native review data)
+const ratingOf = (p: ProductCard) => (4 + (hash(p.handle) % 10) / 10).toFixed(1);
+const reviewsOf = (p: ProductCard) => (100 + (hash(p.handle) % 4900)).toLocaleString('en-US');
+
+const totalProducts = products.length;
+
+// Section tabs + counts (computed from per-product category membership)
+const sectionTabs = sections.map((s) => ({
+  ...s,
+  count: products.filter((p) => catKeys(p).includes(s.key)).length,
+}));
+
+// Build the render model for each card
+const cards = products.map((p, i) => {
+  const min = p.priceRange.minVariantPrice;
+  const compareAt = p.compareAtPriceRange?.minVariantPrice ?? null;
+  const onSale = isOnSale(min, compareAt);
+  const off = discountPercent(min, compareAt);
+  const rank = newRank ? newRank.get(p.id) : undefined;
+  const isNew = rank != null && rank < 6;
+  return {
+    p,
+    cat: catKeys(p).join(' '),
+    brand: p.vendor ?? '',
+    price: Math.round(Number(min.amount) || 0),
+    rating: ratingOf(p),
+    reviews: reviewsOf(p),
+    onSale, off,
+    isNew,
+    inStock: p.availableForSale !== false,
+    order: i + 1,
+    date: rank != null ? 100000 - rank : totalProducts - i,
+    colors: colorsOf(p),
+    swatches: swatchesOf(p),
+    priceLabel: formatMoney(min.amount, min.currencyCode),
+    oldLabel: compareAt ? formatMoney(compareAt.amount, compareAt.currencyCode) : '',
+    hot: !onSale && !isNew && i < 4,
+  };
+});
+
+const eyeSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const cartSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h9.4a2 2 0 0 0 2-1.5L23 6H6"/></svg>`;
+const heartSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+const compareSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M3 12h12M3 18h6"/></svg>`;
+---
+
+<div class="mz-shop">
+  <slot name="breadcrumb" />
+
+  <main>
+    <!-- MASTHEAD -->
+    <section class="shop-mast">
+      <div class="container">
+        <div class="shop-mast-top">
+          <div>
+            <span class="shop-mast-kicker"><span class="ping"></span> {kicker}</span>
+            <h1>{titleLead} <em>{titleEm}</em></h1>
+          </div>
+          <p class="shop-mast-deck">{deck}</p>
+        </div>
+        <div class="shop-mast-stats">
+          {stats.map((s) => (
+            <div class="shop-mast-stat"><b>{s.value}</b><span>{s.label}</span></div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- THE NEWSSTAND CONTROL DECK -->
+    <div class="container">
+      <div class="nsd" id="nsd">
+
+        <!-- Section tabs -->
+        <div class="nsd-sections">
+          <div class="nsd-sec-track" id="nsdSecTrack">
+            <button class="nsd-sec is-active" data-cat="all" data-label="All">All <span class="ct">{totalProducts.toLocaleString('en-US')}</span></button>
+            {sectionTabs.map((c) => (
+              <button class="nsd-sec" data-cat={c.key} data-label={c.label}>{c.label} <span class="ct">{c.count}</span></button>
+            ))}
+            <span class="nsd-sec-ind" id="nsdSecInd"></span>
+          </div>
+        </div>
+
+        <!-- Control bar -->
+        <div class="nsd-bar">
+          <div class="nsd-bar-left">
+            <span class="nsd-count">Showing <b id="nsdShown">0</b> of {totalProducts.toLocaleString('en-US')}</span>
+            <div class="nsd-chips" id="nsdChips"></div>
+            <button class="nsd-clear-all" id="nsdClearAll" style="display:none;">Clear all</button>
+          </div>
+
+          <div class="nsd-tools">
+            <!-- density -->
+            <div class="nsd-density" role="group" aria-label="Grid density">
+              <button class="nsd-den-btn" data-cols="2" aria-label="2 columns">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="7" height="16" rx="1" />
+                  <rect x="14" y="4" width="7" height="16" rx="1" />
+                </svg>
+              </button>
+              <button class="nsd-den-btn" data-cols="3" aria-label="3 columns">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="4.5" height="16" rx="1" />
+                  <rect x="9.7" y="4" width="4.5" height="16" rx="1" />
+                  <rect x="16.5" y="4" width="4.5" height="16" rx="1" />
+                </svg>
+              </button>
+              <button class="nsd-den-btn is-active" data-cols="4" aria-label="4 columns">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="3.2" height="16" rx="1" />
+                  <rect x="8" y="4" width="3.2" height="16" rx="1" />
+                  <rect x="13" y="4" width="3.2" height="16" rx="1" />
+                  <rect x="18" y="4" width="3.2" height="16" rx="1" />
+                </svg>
+              </button>
+              <span class="nsd-den-sep"></span>
+              <button class="nsd-den-btn" data-view="list" aria-label="List view">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="6" height="6" rx="1" />
+                  <rect x="3" y="14" width="6" height="6" rx="1" />
+                  <path d="M12 6h9M12 9h6M12 16h9M12 19h6" stroke-linecap="round" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- sort -->
+            <div class="nsd-sort">
+              <span class="nsd-sort-lbl">Sort</span>
+              <div class="nsd-sort-seg" id="nsdSortSeg">
+                <button class="nsd-sort-opt is-active" data-sort="popular">Popular</button>
+                <button class="nsd-sort-opt" data-sort="newest">Newest</button>
+                <button class="nsd-sort-opt" data-sort="price-asc">Price ↑</button>
+                <button class="nsd-sort-opt" data-sort="price-desc">Price ↓</button>
+                <button class="nsd-sort-opt" data-sort="rating">Top Rated</button>
+              </div>
+              <div class="nsd-sort-native">
+                <select id="nsdSortNative" aria-label="Sort products">
+                  <option value="popular">Most Popular</option>
+                  <option value="newest">Newest</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="rating">Top Rated</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- refine -->
+            <button class="nsd-refine" id="nsdRefineBtn" aria-expanded="false" aria-controls="nsdPanel">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 6h16M7 12h10M10 18h4" />
+              </svg>
+              Refine
+              <span class="rf-badge" id="nsdRefineBadge">0</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Refine mega-panel -->
+        <div class="nsd-panel" id="nsdPanel">
+          <div class="nsd-panel-clip">
+            <div class="nsd-panel-inner">
+
+              <!-- Price -->
+              <div class="rf-col">
+                <div class="rf-col-title">Price Range</div>
+                <div class="rf-readout">
+                  <span class="val" id="rfPriceMin">$0</span>
+                  <span class="dash"></span>
+                  <span class="val" id="rfPriceMax">${PRICE_MAX}</span>
+                </div>
+                <div class="rf-range" id="rfRange">
+                  <div class="track"></div>
+                  <div class="fill" id="rfRangeFill"></div>
+                  <input type="range" id="rfMin" min="0" max={PRICE_MAX} step="10" value="0" aria-label="Minimum price">
+                  <input type="range" id="rfMax" min="0" max={PRICE_MAX} step="10" value={PRICE_MAX} aria-label="Maximum price">
+                </div>
+                <div class="rf-price-chips">
+                  {priceBuckets.map((b) => (
+                    <button class="rf-chip" data-prange={b.range}>{b.label}</button>
+                  ))}
+                </div>
+              </div>
+
+              <!-- Brand -->
+              <div class="rf-col">
+                <div class="rf-col-title">Brand</div>
+                <div class="rf-chips" id="rfBrands">
+                  {brands.map((b) => (
+                    <button class="rf-chip" data-brand={b}>{b}</button>
+                  ))}
+                </div>
+              </div>
+
+              <!-- Rating -->
+              <div class="rf-col">
+                <div class="rf-col-title">Customer Rating</div>
+                <div class="rf-stars" id="rfStars">
+                  <button class="rf-star" data-rating="4.5"><span class="s">★★★★★</span><span class="t">4.5 &amp; up</span></button>
+                  <button class="rf-star" data-rating="4"><span class="s">★★★★<i>★</i></span><span class="t">4.0 &amp; up</span></button>
+                  <button class="rf-star" data-rating="3.5"><span class="s">★★★<i>★★</i></span><span class="t">3.5 &amp; up</span></button>
+                  <button class="rf-star" data-rating="0"><span class="s">★★★★★</span><span class="t">Any rating</span></button>
+                </div>
+              </div>
+
+              <!-- Deals & availability -->
+              <div class="rf-col">
+                <div class="rf-col-title">Deals &amp; Stock</div>
+                <div class="rf-toggles" id="rfToggles">
+                  <button class="rf-toggle" data-flag="sale"><span class="t">On sale only</span><span class="rf-sw"></span></button>
+                  <button class="rf-toggle" data-flag="new"><span class="t">New arrivals</span><span class="rf-sw"></span></button>
+                  <button class="rf-toggle" data-flag="stock"><span class="t">In stock</span><span class="rf-sw"></span></button>
+                  <button class="rf-toggle" data-flag="ship"><span class="t">Free shipping</span><span class="rf-sw"></span></button>
+                </div>
+              </div>
+
+              <!-- Color -->
+              <div class="rf-col">
+                <div class="rf-col-title">Colour</div>
+                <div class="rf-sws" id="rfColors">
+                  {colors.map(([name, hex]) => (
+                    <span class="rf-color" data-color={name} style={`background:${hex};`} title={name}></span>
+                  ))}
+                </div>
+              </div>
+
+              <!-- Footer -->
+              <div class="nsd-panel-foot">
+                <button class="reset" id="rfReset">↺ Reset all filters</button>
+                <button class="nsd-apply" id="rfApply">
+                  Show <span id="rfApplyCount">0</span> results
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14M13 6l6 6-6 6" />
+                  </svg>
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PRODUCT GRID -->
+    <section class="shop-area">
+      <div class="container">
+        <div class="shop-grid cols-4" id="shopGrid" data-price-max={PRICE_MAX} data-catalog={totalProducts}>
+
+          {cards.map((c) => (
+            <article
+              class="bs-card"
+              data-cat={c.cat}
+              data-brand={c.brand}
+              data-price={c.price}
+              data-rating={c.rating}
+              data-sale={c.onSale ? '1' : '0'}
+              data-new={c.isNew ? '1' : '0'}
+              data-stock={c.inStock ? '1' : '0'}
+              data-order={c.order}
+              data-date={c.date}
+              data-color={c.colors.join(' ')}
+              data-name={c.p.title}
+            >
+              <div class="bs-card-media">
+                <a class="media-link" href={`/products/${c.p.handle}`}>
+                  {c.p.featuredImage && <img src={c.p.featuredImage.url} alt={c.p.featuredImage.altText ?? c.p.title} loading="lazy" />}
+                </a>
+                <div class="bs-card-acts">
+                  <button
+                    class="bs-card-act bs-card-wish"
+                    aria-label="Save to wishlist"
+                    aria-pressed="false"
+                    data-wish-id={c.p.id}
+                    data-wish-handle={c.p.handle}
+                    data-wish-title={c.p.title}
+                    data-wish-img={c.p.featuredImage?.url ?? ''}
+                    data-wish-price={c.p.priceRange.minVariantPrice.amount}
+                    data-wish-currency={c.p.priceRange.minVariantPrice.currencyCode}
+                  ><Fragment set:html={heartSvg} /></button>
+                  <button
+                    class="bs-card-act bs-card-compare"
+                    aria-label="Add to compare"
+                    data-cmp-id={c.p.id}
+                    data-cmp-handle={c.p.handle}
+                    data-cmp-title={c.p.title}
+                    data-cmp-img={c.p.featuredImage?.url ?? ''}
+                    data-cmp-price={c.p.priceRange.minVariantPrice.amount}
+                    data-cmp-currency={c.p.priceRange.minVariantPrice.currencyCode}
+                  ><Fragment set:html={compareSvg} /></button>
+                </div>
+                <div class="bs-card-flags">
+                  {c.onSale && c.off != null && <span class="bs-flag red">−{c.off}%</span>}
+                  {c.isNew && <span class="bs-flag blue">NEW</span>}
+                  {c.hot && <span class="bs-flag yellow">HOT</span>}
+                </div>
+                <div class="bs-quick">
+                  <button class="qv" data-qv-handle={c.p.handle}><Fragment set:html={eyeSvg} /> Quick view</button>
+                  <button class="add" data-variant-id={c.p.firstVariantId} data-price={c.p.priceRange.minVariantPrice.amount} data-currency={c.p.priceRange.minVariantPrice.currencyCode}><Fragment set:html={cartSvg} /> Add to Cart</button>
+                </div>
+              </div>
+              <div class="bs-card-body">
+                {c.brand && <span class="bs-card-brand">{c.brand}</span>}
+                <h3 class="bs-card-name"><a href={`/products/${c.p.handle}`}>{c.p.title}</a></h3>
+                <div class="bs-card-rating"><span class="stars">★★★★★</span><span class="rval">{c.rating}</span><span class="rcnt">({c.reviews})</span></div>
+                <div class="bs-card-prices">
+                  <div class="bs-card-price-stack">
+                    <span class="bs-card-price">{c.priceLabel}</span>
+                    {c.onSale && c.oldLabel && <span class="bs-card-price-old">{c.oldLabel}</span>}
+                  </div>
+                  {c.swatches.length > 0 ? (
+                    <div class="bs-card-colors">
+                      {c.swatches.slice(0, 5).map((s, si) => (
+                        <button
+                          class:list={['bs-card-color', si === 0 && 'is-active']}
+                          title={s.value}
+                          aria-label={`Colour: ${s.value}`}
+                          style={`background:${s.hex};`}
+                          data-swatch-id={s.id}
+                          data-swatch-price={s.amount}
+                          data-swatch-currency={s.currency}
+                          data-swatch-img={s.img}
+                        ></button>
+                      ))}
+                    </div>
+                  ) : c.colors.length > 0 ? (
+                    <div class="bs-card-colors">
+                      {c.colors.slice(0, 4).map((col) => (
+                        <span class="bs-card-color" style={`background:${swatchColor(col)};`}></span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </article>
+          ))}
+
+          <!-- Empty state -->
+          <div class="shop-empty" id="shopEmpty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M21 21l-4.3-4.3M8 11h6" />
+            </svg>
+            <h4>{emptyTitle}</h4>
+            <p>{emptyBody}</p>
+            <button id="shopEmptyReset">Reset all filters</button>
+          </div>
+
+        </div>
+
+        <!-- Load more -->
+        <div class="shop-more" id="shopMore">
+          <div class="shop-more-meta">You've viewed <b id="shopMoreShown">0</b> of <span id="shopMoreTotal">{totalProducts.toLocaleString('en-US')}</span> products</div>
+          <div class="shop-more-bar">
+            <div class="shop-more-fill" id="shopMoreFill" style="width:1.4%;"></div>
+          </div>
+          <button class="btn btn-lg" id="shopMoreBtn">
+            Load more
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12l7 7 7-7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    {popular.length > 0 && (
+      <section class="popsearch">
+        <div class="container">
+          <div class="popsearch-panel">
+            <div class="popsearch-head">
+              <h3>Popular Search</h3>
+              <div class="popsearch-nav">
+                <button id="psPrev" aria-label="Scroll left">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6" /></svg>
+                </button>
+                <button id="psNext" aria-label="Scroll right">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6" /></svg>
+                </button>
+              </div>
+            </div>
+            <div class="popsearch-track" id="psTrack">
+              {popular.map((ps) => (
+                <a href={ps.url} class="ps-chip">
+                  <img src={ps.img} alt="" loading="lazy" />
+                  <span class="ps-label">{ps.label}</span>
+                  <span class="ps-go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10" /></svg></span>
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    )}
+  </main>
+</div>
+
+<QuickViewModal client:idle />
+
+<!-- Cart + Quick View + swatch wiring (live data) -->
+<script>
+  import { addItem } from '~/stores/cart';
+  import { cachePrice } from '~/stores/price-cache';
+  import { wishlist, $wishlist } from '~/stores/wishlist';
+  import { compare, $compare, COMPARE_CAP } from '~/stores/compare';
+
+  const CART = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l2.4 12.5a2 2 0 0 0 2 1.5h9.4a2 2 0 0 0 2-1.5L23 6H6"/></svg>`;
+  const HEART_EMPTY = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+  const HEART_FULL = `<svg viewBox="0 0 24 24" fill="#e8192c" stroke="#e8192c" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+
+  // Matches formatMoney() — formats in the variant's own (market) currency.
+  const money = (amount: string, currency: string) => {
+    const n = Number(amount);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD', minimumFractionDigits: Number.isInteger(n) ? 0 : 2 }).format(n);
+  };
+
+  document.getElementById('shopGrid')?.addEventListener('click', async (e) => {
+    const target = e.target as Element;
+
+    // ── Colour swatch → swap variant id / price / image on this card ──
+    const swatch = target.closest('.bs-card-color') as HTMLElement | null;
+    if (swatch && swatch.dataset.swatchId) {
+      const card = swatch.closest('.bs-card') as HTMLElement;
+      card.querySelectorAll('.bs-card-color').forEach((s) => s.classList.remove('is-active'));
+      swatch.classList.add('is-active');
+
+      const addBtn = card.querySelector('.add') as HTMLButtonElement | null;
+      if (addBtn) {
+        addBtn.dataset.variantId = swatch.dataset.swatchId;
+        if (swatch.dataset.swatchPrice) addBtn.dataset.price = swatch.dataset.swatchPrice;
+        if (swatch.dataset.swatchCurrency) addBtn.dataset.currency = swatch.dataset.swatchCurrency;
+      }
+
+      const priceEl = card.querySelector('.bs-card-price') as HTMLElement | null;
+      if (priceEl && swatch.dataset.swatchPrice) priceEl.textContent = money(swatch.dataset.swatchPrice, swatch.dataset.swatchCurrency || 'USD');
+
+      const imgUrl = swatch.dataset.swatchImg;
+      if (imgUrl) {
+        const img = card.querySelector('.bs-card-media img') as HTMLImageElement | null;
+        if (img) img.src = imgUrl;
+      }
+      return;
+    }
+
+    // ── Wishlist heart (top-left) → toggle saved state ──
+    const wishBtn = target.closest('.bs-card-wish') as HTMLButtonElement | null;
+    if (wishBtn) {
+      e.preventDefault();
+      const id = wishBtn.dataset.wishId;
+      if (!id) return;
+      wishlist.toggle({
+        id,
+        handle: wishBtn.dataset.wishHandle || '',
+        title: wishBtn.dataset.wishTitle || '',
+        image: wishBtn.dataset.wishImg || null,
+        price: wishBtn.dataset.wishPrice ?? null,
+        currency: wishBtn.dataset.wishCurrency ?? null,
+      });
+      return; // visual state is reflected by the $wishlist subscription below
+    }
+
+    // ── Compare (under the heart) → toggle, capped at COMPARE_CAP ──
+    const cmpBtn = target.closest('.bs-card-compare') as HTMLButtonElement | null;
+    if (cmpBtn) {
+      e.preventDefault();
+      const id = cmpBtn.dataset.cmpId;
+      if (!id) return;
+      if (compare.has(id)) {
+        compare.remove(id);
+      } else if ($compare.get().length < COMPARE_CAP) {
+        compare.add({
+          id,
+          handle: cmpBtn.dataset.cmpHandle || '',
+          title: cmpBtn.dataset.cmpTitle || '',
+          image: cmpBtn.dataset.cmpImg || null,
+          price: cmpBtn.dataset.cmpPrice ?? null,
+          currency: cmpBtn.dataset.cmpCurrency ?? null,
+        });
+      } else {
+        cmpBtn.title = `Compare holds ${COMPARE_CAP} max`;
+      }
+      return; // visual state is reflected by the $compare subscription below
+    }
+
+    const qv = target.closest('[data-qv-handle]') as HTMLElement | null;
+    if (qv) {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('quickview:open', { detail: { handle: qv.dataset.qvHandle } }));
+      return;
+    }
+
+    const add = target.closest('.add') as HTMLButtonElement | null;
+    if (!add) return;
+    const variantId = add.dataset.variantId ?? '';
+    if (!variantId || add.disabled) return;
+    e.preventDefault();
+    if (add.dataset.price && add.dataset.currency)
+      cachePrice(variantId, { amount: add.dataset.price, currencyCode: add.dataset.currency });
+    add.disabled = true;
+    const orig = add.innerHTML;
+    add.innerHTML = 'Adding…';
+    await addItem(variantId, 1, { open: true });
+    add.innerHTML = '✓ Added!';
+    setTimeout(() => { add.disabled = false; add.innerHTML = orig; }, 1800);
+  });
+
+  // Reflect saved-wishlist state on every card heart (initial hydrate + live
+  // sync when toggled here, on the home grid, or in the wishlist drawer).
+  wishlist.init();
+  $wishlist.subscribe((items) => {
+    const ids = new Set(items.map((i) => i.id));
+    document.querySelectorAll('#shopGrid .bs-card-wish').forEach((btn) => {
+      const el = btn as HTMLButtonElement;
+      const on = ids.has(el.dataset.wishId || '');
+      el.setAttribute('aria-pressed', String(on));
+      el.innerHTML = on ? HEART_FULL : HEART_EMPTY;
+    });
+  });
+
+  // Reflect compare state on every card (initial hydrate + live sync).
+  compare.init();
+  $compare.subscribe((items) => {
+    const ids = new Set(items.map((i) => i.id));
+    document.querySelectorAll('#shopGrid .bs-card-compare').forEach((btn) => {
+      const el = btn as HTMLButtonElement;
+      const on = ids.has(el.dataset.cmpId || '');
+      el.classList.toggle('is-active', on);
+      el.setAttribute('aria-pressed', String(on));
+      el.title = on ? 'Remove from compare' : 'Add to compare';
+    });
+  });
+</script>
+
+<!-- Newsstand Control Deck — driven by the live cards -->
+<script>
+  (function () {
+    var grid = document.getElementById('shopGrid');
+    if (!grid) return;
+
+    var cards = Array.prototype.slice.call(grid.querySelectorAll('.bs-card'));
+    var emptyEl = document.getElementById('shopEmpty');
+    var PRICE_MAX = +(grid.dataset.priceMax || 1500);
+    var CATALOG = +(grid.dataset.catalog || cards.length);
+
+    var secTrack = document.getElementById('nsdSecTrack');
+    var secs = Array.prototype.slice.call(secTrack.querySelectorAll('.nsd-sec'));
+    var CAT_LABELS = {};
+    secs.forEach(function (s) { CAT_LABELS[s.dataset.cat] = s.dataset.label || s.textContent.trim(); });
+    var FLAG_LABELS = { sale: 'On sale', new: 'New arrivals', stock: 'In stock', ship: 'Free shipping' };
+
+    var state = { cat: 'all', brands: [], priceMin: 0, priceMax: PRICE_MAX, rating: 0, flags: {}, colors: [], sort: 'popular' };
+    function fmt(n) { return n.toLocaleString('en-US'); }
+
+    var ind = document.getElementById('nsdSecInd');
+    var nsd = document.getElementById('nsd');
+    var refineBtn = document.getElementById('nsdRefineBtn');
+    var refineBadge = document.getElementById('nsdRefineBadge');
+    var chipsWrap = document.getElementById('nsdChips');
+    var clearAllBtn = document.getElementById('nsdClearAll');
+    var shownEl = document.getElementById('nsdShown');
+    var applyCountEl = document.getElementById('rfApplyCount');
+    var moreShown = document.getElementById('shopMoreShown');
+    var moreFill = document.getElementById('shopMoreFill');
+    var rfMin = document.getElementById('rfMin');
+    var rfMax = document.getElementById('rfMax');
+    var rfFill = document.getElementById('rfRangeFill');
+    var rfPriceMinEl = document.getElementById('rfPriceMin');
+    var rfPriceMaxEl = document.getElementById('rfPriceMax');
+
+    function moveInd(el) {
+      if (!el) return;
+      ind.style.width = el.offsetWidth + 'px';
+      ind.style.transform = 'translateX(' + el.offsetLeft + 'px)';
+    }
+
+    function match(c) {
+      if (state.cat !== 'all' && (c.dataset.cat || '').split(' ').indexOf(state.cat) === -1) return false;
+      if (state.brands.length && state.brands.indexOf(c.dataset.brand) === -1) return false;
+      var p = +c.dataset.price;
+      if (p < state.priceMin || p > state.priceMax) return false;
+      if (state.rating > 0 && (+c.dataset.rating) < state.rating) return false;
+      if (state.flags.sale && c.dataset.sale !== '1') return false;
+      if (state.flags.new && c.dataset.new !== '1') return false;
+      if (state.flags.stock && c.dataset.stock !== '1') return false;
+      if (state.flags.ship && p < 99) return false;
+      if (state.colors.length) {
+        var cc = (c.dataset.color || '').split(' ');
+        var hit = state.colors.some(function (x) { return cc.indexOf(x) > -1; });
+        if (!hit) return false;
+      }
+      return true;
+    }
+
+    function sortCards() {
+      var arr = cards.slice();
+      var s = state.sort;
+      arr.sort(function (a, b) {
+        if (s === 'popular') return (+a.dataset.order) - (+b.dataset.order);
+        if (s === 'newest') return (+b.dataset.date) - (+a.dataset.date);
+        if (s === 'price-asc') return (+a.dataset.price) - (+b.dataset.price);
+        if (s === 'price-desc') return (+b.dataset.price) - (+a.dataset.price);
+        if (s === 'rating') return (+b.dataset.rating) - (+a.dataset.rating);
+        return 0;
+      });
+      arr.forEach(function (c) { grid.appendChild(c); });
+      grid.appendChild(emptyEl);
+    }
+
+    function activeCount() {
+      return state.brands.length
+        + (state.priceMin > 0 || state.priceMax < PRICE_MAX ? 1 : 0)
+        + (state.rating > 0 ? 1 : 0)
+        + Object.keys(state.flags).filter(function (k) { return state.flags[k]; }).length
+        + state.colors.length;
+    }
+
+    function renderChips() {
+      var items = [];
+      if (state.cat !== 'all') items.push({ label: CAT_LABELS[state.cat], clear: function () { setCat('all'); } });
+      state.brands.forEach(function (b) {
+        items.push({ label: b, clear: function () { state.brands = state.brands.filter(function (x) { return x !== b; }); refresh(); } });
+      });
+      if (state.priceMin > 0 || state.priceMax < PRICE_MAX) {
+        items.push({ label: '$' + fmt(state.priceMin) + ' – $' + fmt(state.priceMax), clear: function () { state.priceMin = 0; state.priceMax = PRICE_MAX; refresh(); } });
+      }
+      if (state.rating > 0) items.push({ label: state.rating + '★ & up', clear: function () { state.rating = 0; refresh(); } });
+      Object.keys(state.flags).forEach(function (k) {
+        if (state.flags[k]) items.push({ label: FLAG_LABELS[k], clear: function () { state.flags[k] = false; refresh(); } });
+      });
+      state.colors.forEach(function (col) {
+        items.push({ label: col.charAt(0).toUpperCase() + col.slice(1), clear: function () { state.colors = state.colors.filter(function (x) { return x !== col; }); refresh(); } });
+      });
+
+      chipsWrap.innerHTML = '';
+      items.forEach(function (it) {
+        var chip = document.createElement('span');
+        chip.className = 'nsd-chip';
+        chip.innerHTML = it.label + '<button class="nsd-chip-x" aria-label="Remove filter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 6l12 12M6 18L18 6"/></svg></button>';
+        chip.querySelector('.nsd-chip-x').addEventListener('click', it.clear);
+        chipsWrap.appendChild(chip);
+      });
+      clearAllBtn.style.display = items.length ? '' : 'none';
+    }
+
+    function updateRangeFill() {
+      var lo = +rfMin.value, hi = +rfMax.value;
+      rfFill.style.left = (lo / PRICE_MAX * 100) + '%';
+      rfFill.style.width = ((hi - lo) / PRICE_MAX * 100) + '%';
+      rfPriceMinEl.textContent = '$' + fmt(lo);
+      rfPriceMaxEl.textContent = '$' + fmt(hi);
+    }
+
+    function syncControls() {
+      secs.forEach(function (s) {
+        var on = s.dataset.cat === state.cat;
+        s.classList.toggle('is-active', on);
+        if (on) moveInd(s);
+      });
+      document.querySelectorAll('#rfBrands .rf-chip').forEach(function (b) {
+        b.classList.toggle('is-on', state.brands.indexOf(b.dataset.brand) > -1);
+      });
+      document.querySelectorAll('.rf-price-chips .rf-chip').forEach(function (b) {
+        var parts = b.dataset.prange.split('-');
+        b.classList.toggle('is-on', +parts[0] === state.priceMin && +parts[1] === state.priceMax);
+      });
+      rfMin.value = state.priceMin; rfMax.value = state.priceMax;
+      updateRangeFill();
+      document.querySelectorAll('#rfStars .rf-star').forEach(function (r) {
+        r.classList.toggle('is-on', +r.dataset.rating === state.rating && state.rating > 0);
+      });
+      document.querySelectorAll('#rfToggles .rf-toggle').forEach(function (t) {
+        t.classList.toggle('is-on', !!state.flags[t.dataset.flag]);
+      });
+      document.querySelectorAll('#rfColors .rf-color').forEach(function (c) {
+        c.classList.toggle('is-on', state.colors.indexOf(c.dataset.color) > -1);
+      });
+      document.querySelectorAll('#nsdSortSeg .nsd-sort-opt').forEach(function (o) {
+        o.classList.toggle('is-active', o.dataset.sort === state.sort);
+      });
+      var nativeSel = document.getElementById('nsdSortNative');
+      if (nativeSel) nativeSel.value = state.sort;
+      var n = activeCount();
+      refineBadge.textContent = n;
+      refineBadge.style.display = n > 0 ? 'inline-block' : 'none';
+    }
+
+    function apply() {
+      var visible = 0;
+      cards.forEach(function (c) {
+        var ok = match(c);
+        c.classList.toggle('is-hidden', !ok);
+        if (ok) visible++;
+      });
+      sortCards();
+      emptyEl.classList.toggle('show', visible === 0);
+      shownEl.textContent = visible;
+      applyCountEl.textContent = visible;
+      moreShown.textContent = visible;
+      var pct = Math.max(1.4, (visible / CATALOG) * 100);
+      moreFill.style.width = pct + '%';
+    }
+
+    function refresh() { syncControls(); renderChips(); apply(); }
+
+    function setCat(cat) { state.cat = cat; refresh(); }
+    secs.forEach(function (s) { s.addEventListener('click', function () { setCat(s.dataset.cat); }); });
+
+    refineBtn.addEventListener('click', function () {
+      var open = nsd.classList.toggle('is-refining');
+      refineBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    document.getElementById('rfApply').addEventListener('click', function () {
+      nsd.classList.remove('is-refining');
+      refineBtn.setAttribute('aria-expanded', 'false');
+      grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    document.querySelectorAll('#rfBrands .rf-chip').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var brand = b.dataset.brand;
+        var i = state.brands.indexOf(brand);
+        if (i > -1) state.brands.splice(i, 1); else state.brands.push(brand);
+        refresh();
+      });
+    });
+
+    document.querySelectorAll('.rf-price-chips .rf-chip').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var parts = b.dataset.prange.split('-');
+        var lo = +parts[0], hi = +parts[1];
+        if (state.priceMin === lo && state.priceMax === hi) { state.priceMin = 0; state.priceMax = PRICE_MAX; }
+        else { state.priceMin = lo; state.priceMax = hi; }
+        refresh();
+      });
+    });
+
+    function onRange() {
+      var lo = +rfMin.value, hi = +rfMax.value;
+      if (lo > hi - 10) { if (this === rfMin) { lo = hi - 10; rfMin.value = lo; } else { hi = lo + 10; rfMax.value = hi; } }
+      state.priceMin = +rfMin.value;
+      state.priceMax = +rfMax.value;
+      updateRangeFill();
+      renderChips();
+      var visible = 0;
+      cards.forEach(function (c) { if (match(c)) visible++; });
+      applyCountEl.textContent = visible;
+    }
+    rfMin.addEventListener('input', onRange);
+    rfMax.addEventListener('input', onRange);
+    rfMin.addEventListener('change', refresh);
+    rfMax.addEventListener('change', refresh);
+
+    document.querySelectorAll('#rfStars .rf-star').forEach(function (r) {
+      r.addEventListener('click', function () {
+        var val = +r.dataset.rating;
+        state.rating = (state.rating === val) ? 0 : val;
+        refresh();
+      });
+    });
+
+    document.querySelectorAll('#rfToggles .rf-toggle').forEach(function (t) {
+      t.addEventListener('click', function () {
+        var f = t.dataset.flag;
+        state.flags[f] = !state.flags[f];
+        refresh();
+      });
+    });
+
+    document.querySelectorAll('#rfColors .rf-color').forEach(function (c) {
+      c.addEventListener('click', function () {
+        var col = c.dataset.color;
+        var i = state.colors.indexOf(col);
+        if (i > -1) state.colors.splice(i, 1); else state.colors.push(col);
+        refresh();
+      });
+    });
+
+    document.querySelectorAll('#nsdSortSeg .nsd-sort-opt').forEach(function (o) {
+      o.addEventListener('click', function () { state.sort = o.dataset.sort; refresh(); });
+    });
+    var nativeSel = document.getElementById('nsdSortNative');
+    if (nativeSel) nativeSel.addEventListener('change', function () { state.sort = nativeSel.value; refresh(); });
+
+    document.querySelectorAll('.nsd-den-btn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('.nsd-den-btn').forEach(function (x) { x.classList.remove('is-active'); });
+        b.classList.add('is-active');
+        if (b.dataset.view === 'list') {
+          grid.classList.remove('cols-2', 'cols-3', 'cols-4');
+          grid.classList.add('view-list');
+        } else {
+          grid.classList.remove('view-list', 'cols-2', 'cols-3', 'cols-4');
+          grid.classList.add('cols-' + b.dataset.cols);
+        }
+      });
+    });
+
+    function clearAll() {
+      state.cat = 'all'; state.brands = []; state.priceMin = 0; state.priceMax = PRICE_MAX;
+      state.rating = 0; state.flags = {}; state.colors = [];
+      refresh();
+    }
+    clearAllBtn.addEventListener('click', clearAll);
+    document.getElementById('rfReset').addEventListener('click', clearAll);
+    document.getElementById('shopEmptyReset').addEventListener('click', clearAll);
+
+    var moreBtn = document.getElementById('shopMoreBtn');
+    if (moreBtn) {
+      moreBtn.addEventListener('click', function () {
+        moreBtn.disabled = true;
+        moreBtn.style.opacity = '.55';
+        moreBtn.style.cursor = 'default';
+        moreBtn.innerHTML = 'You’re all caught up ✓';
+      });
+    }
+
+    (function () {
+      var track = document.getElementById('psTrack');
+      if (!track) return;
+      var prev = document.getElementById('psPrev');
+      var next = document.getElementById('psNext');
+      function step(dir) {
+        var chip = track.querySelector('.ps-chip');
+        var w = chip ? chip.offsetWidth + 14 : 220;
+        track.scrollBy({ left: dir * w * 2, behavior: 'smooth' });
+      }
+      if (prev) prev.addEventListener('click', function () { step(-1); });
+      if (next) next.addEventListener('click', function () { step(1); });
+    })();
+
+    function init() { refresh(); moveInd(secTrack.querySelector('.nsd-sec.is-active')); }
+    if (document.readyState === 'complete' || document.readyState === 'interactive') init();
+    else document.addEventListener('DOMContentLoaded', init);
+    window.addEventListener('load', function () { moveInd(secTrack.querySelector('.nsd-sec.is-active')); });
+    window.addEventListener('resize', function () { moveInd(secTrack.querySelector('.nsd-sec.is-active')); });
+  })();
+</script>

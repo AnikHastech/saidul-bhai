@@ -1,0 +1,97 @@
+---
+// ============================================================
+//  ProductListing — shared PLP body. Optional faceted-filter
+//  sidebar (collection pages), result-count + density + sort
+//  toolbar, product grid, cursor pagination, empty state.
+//  Used by the all-products, collection, and search pages (DRY).
+// ============================================================
+import type { CollectionFilter, ProductCard, SortOption } from '~/lib/shopify/types';
+import { activeFilterCount } from '~/lib/filters';
+import ProductGrid from './ProductGrid.astro';
+import Pagination from './Pagination.astro';
+import SortSelect from './SortSelect.astro';
+import RefinePanel from './RefinePanel.astro';
+import ActiveFilters from './ActiveFilters.astro';
+import DensityToggle from '~/components/react/DensityToggle.tsx';
+import Icon from '~/components/ui/Icon.astro';
+
+interface Props {
+  products: ProductCard[];
+  countLabel: string;
+  url: URL;
+  sortOptions?: SortOption[];
+  sortValue?: string;
+  sortAction?: string;
+  filters?: CollectionFilter[];
+  filterAction?: string;
+  prevUrl?: string | null;
+  nextUrl?: string | null;
+  emptyTitle?: string;
+  emptyBody?: string;
+}
+
+const {
+  products,
+  countLabel,
+  url,
+  sortOptions,
+  sortValue = '',
+  sortAction = '',
+  filters,
+  filterAction = '',
+  prevUrl = null,
+  nextUrl = null,
+  emptyTitle = 'Nothing here yet',
+  emptyBody = 'No products match. Try a different filter or browse everything.',
+} = Astro.props;
+
+const hasFilters = !!filters && filters.some((f) => f.values.length > 0);
+const fCount = activeFilterCount(url);
+---
+
+<div class:list={['listing-layout', !hasFilters && 'listing-layout--full']}>
+  {
+    hasFilters && (
+      <details class="refine-disclosure">
+        <summary class="refine-disclosure__summary">
+          Filters{fCount > 0 ? ` (${fCount})` : ''}
+        </summary>
+        <RefinePanel filters={filters!} url={url} action={filterAction} />
+      </details>
+    )
+  }
+
+  <div class="listing-main">
+    {hasFilters && <ActiveFilters filters={filters!} url={url} />}
+
+    <div class="listing__bar">
+      <p class="listing__count">{countLabel}</p>
+      <div class="listing__tools">
+        <DensityToggle client:idle />
+        {sortOptions && <SortSelect options={sortOptions} value={sortValue} action={sortAction} url={url} />}
+      </div>
+    </div>
+
+    {
+      products.length > 0 ? (
+        <div class="listing__body">
+          <h2 class="sr-only">Products</h2>
+          <ProductGrid products={products} class="product-grid--listing" />
+          <Pagination prevUrl={prevUrl} nextUrl={nextUrl} />
+        </div>
+      ) : (
+        <div class="empty-state">
+          <span class="empty-state__icon">
+            <Icon name="cart" size={26} />
+          </span>
+          <h2 class="masthead">{emptyTitle}</h2>
+          <p>{emptyBody}</p>
+          <a href="/products" class="btn btn--news btn--md">
+            Browse all products
+            <Icon name="arrowRight" size={16} />
+          </a>
+        </div>
+      )
+    }
+  </div>
+</div>

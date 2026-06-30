@@ -1,0 +1,67 @@
+---
+---
+
+<section class="section-newsletter">
+  <div class="container">
+    <div class="nl-wrap">
+
+      <div class="nl-content">
+        <span class="label-kicker">Every Tuesday · Free</span>
+        <h2>GET THE<br>WEEKLY <em>DROP.</em></h2>
+        <p>One curated email each week: the launches worth your money, the deals worth your time, and the editorial reviews you won't find anywhere else. Zero noise.</p>
+
+        <form
+          class="nl-form"
+          id="nlForm"
+          onsubmit="(function(f){f.preventDefault();var inp=f.querySelector('input'),btn=f.querySelector('button');btn.innerHTML='&#10003; Subscribed';btn.style.background='var(--success)';btn.style.color='white';inp.disabled=true;})(this)"
+        >
+          <input type="email" placeholder="your@email.com" required>
+          <button type="submit">
+            Subscribe
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </button>
+        </form>
+
+        <div class="nl-perks">
+          <span class="nl-perk">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>
+            47,000+ subscribers
+          </span>
+          <span class="nl-perk">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>
+            5-min read
+          </span>
+          <span class="nl-perk">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>
+            Unsubscribe anytime
+          </span>
+        </div>
+
+        <p class="nl-fine">
+          By subscribing, you agree to receive marketing from asmaz. We respect your privacy — see our <a href="/policies/privacy-policy">privacy policy</a>.
+        </p>
+      </div>
+
+      <div class="nl-side">
+        <div class="nl-side-card">
+          <span class="stamp">Issue 247</span>
+          <div class="issue">Tuesday · This Week</div>
+          <h3>THE WEEKLY DROP &amp; 6 LAUNCHES.</h3>
+          <ul class="preview-list">
+            <li>30 days with this week's flagship pick — verdict inside.</li>
+            <li>The camera selling out across every store — here's why.</li>
+            <li>6 new launches we tested before publishing.</li>
+            <li>Editor's deal of the week (subscribers only).</li>
+          </ul>
+          <div class="footer">
+            <span>Read by 47,000+ shoppers</span>
+            <span>5 min read</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>

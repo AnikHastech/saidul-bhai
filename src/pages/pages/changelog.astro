@@ -1,0 +1,101 @@
+---
+// ============================================================
+//  Changelog — release notes for the asmaz storefront theme,
+//  newest first. Static editorial timeline.
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import PageHeader from '~/components/layout/PageHeader.astro';
+
+export const prerender = false;
+
+interface Block { tag: 'added' | 'changed' | 'fixed'; items: string[] }
+interface Release { version: string; date: string; current?: boolean; blocks: Block[] }
+
+const releases: Release[] = [
+  {
+    version: 'v1.3.0',
+    date: 'June 2026',
+    current: true,
+    blocks: [
+      { tag: 'added', items: [
+        'Interactive colour swatches on product cards — click to swap variant, price and image.',
+        'Shared ShopExplorer filter deck now powers collection pages, matching the shop.',
+        'Style Guide, Licenses and Changelog pages.',
+      ] },
+      { tag: 'changed', items: [
+        'Recently-viewed cards now mirror the "You may also like" card design.',
+        'Quick View swaps the preview image when a colour is selected.',
+      ] },
+    ],
+  },
+  {
+    version: 'v1.2.0',
+    date: 'April 2026',
+    blocks: [
+      { tag: 'added', items: [
+        'Newsstand Control Deck: faceted filter, sort and grid-density controls.',
+        'Customer accounts via Shopify Customer Account API (OAuth + PKCE).',
+      ] },
+      { tag: 'fixed', items: [
+        'Cart self-healing when a stored cart id expires.',
+      ] },
+    ],
+  },
+  {
+    version: 'v1.1.0',
+    date: 'February 2026',
+    blocks: [
+      { tag: 'added', items: [
+        'Quick View modal, wishlist drawer and product compare tray.',
+        'Server-owned cart synced to islands via an httpOnly cookie.',
+      ] },
+      { tag: 'changed', items: [
+        'Prices normalised to a single storewide display currency.',
+      ] },
+    ],
+  },
+  {
+    version: 'v1.0.0',
+    date: 'January 2026',
+    blocks: [
+      { tag: 'added', items: [
+        'Initial release — headless Shopify storefront on Astro 6 SSR + React islands.',
+        'Magazine home, shop, product, collection, search and content pages.',
+      ] },
+    ],
+  },
+];
+
+const tagLabel: Record<Block['tag'], string> = { added: 'Added', changed: 'Changed', fixed: 'Fixed' };
+---
+
+<BaseLayout title="Changelog" description="Release notes for the asmaz storefront theme.">
+  <PageHeader
+    eyebrow="Release Notes"
+    title="Changelog"
+    description="What’s new, changed and fixed across releases of the asmaz storefront — newest first."
+    crumbs={[{ label: 'Home', href: '/' }, { label: 'Changelog' }]}
+  />
+
+  <div class="wrap mp">
+    <div class="chg">
+      {releases.map((r) => (
+        <article class:list={['chg-entry', !r.current && 'chg-entry--minor']}>
+          <div class="chg-entry__head">
+            <span class="chg-ver">{r.version}</span>
+            {r.current && <span class="chg-current">Latest</span>}
+            <span class="chg-date">{r.date}</span>
+          </div>
+          {r.blocks.map((b) => (
+            <div class="chg-block">
+              <span class:list={['chg-tag', b.tag]}>{tagLabel[b.tag]}</span>
+              <ul class="chg-list">
+                {b.items.map((i) => <li>{i}</li>)}
+              </ul>
+            </div>
+          ))}
+        </article>
+      ))}
+    </div>
+  </div>
+</BaseLayout>

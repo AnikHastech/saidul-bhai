@@ -1,0 +1,37 @@
+---
+// ============================================================
+//  CollectionCard — image (or dark fallback) with the title
+//  overlaid; links to the collection PLP.
+// ============================================================
+import type { Collection } from '~/lib/shopify/types';
+import Icon from '~/components/ui/Icon.astro';
+import { cn } from '~/lib/utils';
+
+interface Props {
+  collection: Collection;
+  class?: string;
+}
+const { collection, class: className } = Astro.props;
+const hasImage = !!collection.image?.url;
+---
+
+<a href={`/collections/${collection.handle}`} class={cn('collection-card', className)} aria-label={collection.title}>
+  {
+    hasImage ? (
+      <img src={collection.image!.url} alt={collection.image!.altText ?? collection.title} loading="lazy" />
+    ) : (
+      <div class="collection-card__fallback">
+        <Icon name="grid" size={36} />
+      </div>
+    )
+  }
+  <div class="collection-card__overlay">
+    <p class="eyebrow collection-card__eyebrow">Collection</p>
+    <div class="collection-card__row">
+      <h3 class="masthead collection-card__title">{collection.title}</h3>
+      <span class="collection-card__go">
+        <Icon name="arrowRight" size={16} />
+      </span>
+    </div>
+  </div>
+</a>

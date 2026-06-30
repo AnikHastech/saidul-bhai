@@ -1,0 +1,333 @@
+---
+// ============================================================
+//  About — pixel-faithful port of magazine-style-html/about-magazine.html.
+//  Editorial brand story (cover · manifesto · mission/vision · core
+//  values · journey · film · founder · masthead/team · FAQ). Visual
+//  design is 100% identical to the mockup; the page chrome (header /
+//  footer) is the app's shared BaseLayout. Content is static editorial
+//  copy (no Shopify catalogue data applies to this page).
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import { TEAM } from '~/data/team';
+
+export const prerender = false;
+
+const check = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" /></svg>`;
+const ig = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2.5" y="2.5" width="19" height="19" rx="5" /><circle cx="12" cy="12" r="4.2" /><circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none" /></svg>`;
+const x = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 2H22l-7.3 8.3L23 22h-6.6l-5.2-6.8L5.2 22H2l7.8-8.9L1.5 2h6.8l4.7 6.2L18.9 2zm-1.2 18h1.8L7.4 3.9H5.5L17.7 20z" /></svg>`;
+const li = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4.98 3.5A2.5 2.5 0 1 1 5 8.5a2.5 2.5 0 0 1-.02-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.83-2.05 3.77-2.05 4.03 0 4.78 2.65 4.78 6.1V21h-4v-5.4c0-1.3-.02-2.96-1.8-2.96-1.8 0-2.08 1.4-2.08 2.86V21H9z" /></svg>`;
+
+const team = TEAM;
+
+const issues = [
+  { yr: '2016', vol: 'No. 01', img: '/images/history-2016.jpg', h: 'The first shelf', p: 'The repair bench becomes a counter — our first 40 hand-picked products go live.' },
+  { yr: '2019', vol: 'No. 02', img: '/images/history-2019.jpg', h: 'The Edit launches', p: 'Our weekly review column finds a readership. Curation becomes the brand.' },
+  { yr: '2021', vol: 'No. 03', img: '/images/history-2021.jpg', h: 'One million reads', p: 'A million people a month read our buying guides before they buy.' },
+  { yr: '2022', vol: 'No. 04', img: '/images/history-2022.jpg', h: 'Global shipping', p: 'asmaz opens to 60+ countries with duties calculated up front — no surprises.' },
+  { yr: '2023', vol: 'No. 05', img: '/images/history-2023.jpg', h: 'SoHo flagship', p: 'Our first physical store opens on Mercer Street — a magazine you can walk into.' },
+  { yr: '2025', vol: 'No. 06', img: '/images/history-2025.jpg', h: 'Carbon-neutral', p: 'Every order ships carbon-neutral, with a trade-in programme for old gear.' },
+  { yr: '2026', vol: 'No. 07', img: '/images/history-2026.jpg', h: 'Issue 247', p: '1.2M customers, 38 brands, and the same back-room principles. Still printing.' },
+];
+
+const faqs = [
+  { q: 'Q.01', ttl: 'How do you decide what to stock?', a: 'Every product is opened, charged and lived with by a real editor before it ever goes live. If it isn’t something we’d recommend to a friend, it doesn’t make the shelf — no matter how big the brand or the margin.' },
+  { q: 'Q.02', ttl: 'Are your reviews really independent?', a: 'Yes. We rank by merit, never by commission. Brands can’t pay for placement or a better verdict — and we’ll happily tell you when a flagship isn’t worth it, even if we sell it.' },
+  { q: 'Q.03', ttl: 'What’s your returns policy?', a: '30 days, no interrogation. If it isn’t right for you, send it back for a full refund. Real humans handle every return — 7 days a week.' },
+  { q: 'Q.04', ttl: 'Do you ship internationally?', a: 'We ship to 60+ countries with duties calculated up front at checkout — so the price you see is the price you pay. No surprise fees at the door.' },
+  { q: 'Q.05', ttl: 'Is my order shipped sustainably?', a: 'Every order ships carbon-neutral, and our trade-in programme keeps old gear out of landfill. We back repairable design and honest warranties wherever we can.' },
+];
+---
+
+<BaseLayout title="About us" description="An editorial electronics house — we test everything, write honestly, and only stock the gear we'd actually recommend.">
+  <div class="mz">
+
+    <!-- ===== COVER (light, diagonal photo strip) ===== -->
+    <section class="mz-cover">
+      <div class="mz-wrap mz-cover-top">
+        <nav class="mz-cover-crumb" aria-label="Breadcrumb">
+          <a href="/">Home</a><span>/</span><span class="cur">About</span>
+        </nav>
+        <h1 class="mz-cover-h1">About <em>us</em></h1>
+        <p class="mz-cover-deck">An <b>editorial electronics house</b> — we test everything, write honestly, and only
+          stock the gear we'd actually recommend to a friend.</p>
+      </div>
+      <div class="mz-cover-strip-wrap">
+        <div class="mz-cover-strip">
+          <div class="mz-panel"><img src="/images/mz%20pannel-01.jpg" alt="An asmaz editor at work" onerror="this.style.opacity=0"></div>
+          <div class="mz-panel"><img src="/images/mz%20pannel-02.jpg" alt="Inside the asmaz test bench" onerror="this.style.opacity=0"></div>
+          <div class="mz-panel"><img src="/images/mz%20pannel-03.jpg" alt="The asmaz workshop" onerror="this.style.opacity=0"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== MANIFESTO ===== -->
+    <section class="mz-mani">
+      <div class="mz-mani-in">
+        <span class="mz-lab">The Manifesto</span>
+        <p>We believe most tech stores have it backwards. They chase <em>everything</em>, rank by <em>commission</em>,
+          and bury you in choice. We do the opposite — <b>test relentlessly</b>, <b>say what we mean</b>, and carry
+          only what we'd put in our own bag. Fewer things, chosen with <em>far more care.</em></p>
+      </div>
+    </section>
+
+    <!-- ===== MISSION + VISION SPREAD ===== -->
+    <section class="mz-spread" id="abmMission">
+      <div class="mz-wrap">
+        <div class="section-head">
+          <div class="section-head-left">
+            <span class="label-kicker">The Editorial Line</span>
+            <h2>Mission &amp; <em>Vision.</em></h2>
+          </div>
+          <div class="section-head-right">
+            <span class="meta" style="max-width: 280px; text-align: right;">Two facing pages — what we do today, and
+              where we're headed.</span>
+          </div>
+        </div>
+        <div class="mz-spread-grid">
+          <article class="mz-pg" id="abmVision">
+            <span class="mz-lab">Our Mission</span>
+            <h2>Make the right tech <em>easy to find.</em></h2>
+            <p class="mz-pg-lead">To cut through the noise of an overstocked, over-hyped industry and hand people
+              straight answers.</p>
+            <p>Every product we list is opened, charged and lived with by a real editor before it earns a place on the
+              shelf. We rank by merit, never by margin — and we'd rather lose a sale than steer you wrong.</p>
+            <ul class="mz-pg-list">
+              <li><Fragment set:html={check} /><span>Hand-tested before anything goes live</span></li>
+              <li><Fragment set:html={check} /><span>Ranked by merit and honesty, never commission</span></li>
+              <li><Fragment set:html={check} /><span>The trade-offs no one else admits to</span></li>
+            </ul>
+          </article>
+          <article class="mz-pg">
+            <span class="mz-lab">Our Vision</span>
+            <h2>A store that reads <em>like a magazine.</em></h2>
+            <p class="mz-pg-lead">A future where buying electronics feels less like a checkout and more like trusted
+              editorial.</p>
+            <p>Fewer products, more context. A catalogue you can trust on sight, backed by people who'd argue about
+              codecs for hours and mean it. That's the standard we're building toward, one issue at a time.</p>
+            <ul class="mz-pg-list">
+              <li><Fragment set:html={check} /><span>Editorial-grade buying guides for every category</span></li>
+              <li><Fragment set:html={check} /><span>A curated catalogue you can trust on sight</span></li>
+              <li><Fragment set:html={check} /><span>Longevity over churn — gear that lasts five years</span></li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CORE VALUES ===== -->
+    <section class="mz-val" id="abmValues">
+      <div class="mz-wrap">
+        <div class="section-head">
+          <div class="section-head-left">
+            <span class="label-kicker">Core Values</span>
+            <h2>What We Won't <em>Compromise.</em></h2>
+          </div>
+          <div class="section-head-right">
+            <span class="meta" style="max-width: 300px; text-align: right;">Four house rules that decide what we
+              stock, and how we treat you.</span>
+          </div>
+        </div>
+        <div class="mz-val-cards">
+          <article class="mz-val-card">
+            <span class="n">01</span>
+            <h3>Honesty over hype</h3>
+            <p>We write what we'd tell a friend. If a flagship isn't worth it, we say so — even when it costs us the
+              sale. Trust compounds; clickbait doesn't.</p>
+          </article>
+          <article class="mz-val-card">
+            <span class="n">02</span>
+            <h3>Curation, not clutter</h3>
+            <p>We don't carry everything — we carry the right things. Every product is hand-tested and earns its
+              place, or it never makes the shelf.</p>
+          </article>
+          <article class="mz-val-card">
+            <span class="n">03</span>
+            <h3>People before parcels</h3>
+            <p>Real humans answer, 7 days a week. 30-day returns, no interrogation. The relationship matters more than
+              any single transaction.</p>
+          </article>
+          <article class="mz-val-card">
+            <span class="n">04</span>
+            <h3>Built to last</h3>
+            <p>We back longevity — repairable design, honest warranties, and gear that's still good in five years.
+              Better for you, better for the planet.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== JOURNEY (back issues) ===== -->
+    <section class="mz-iss" id="abmJourney">
+      <div class="mz-wrap">
+        <div class="section-head">
+          <div class="section-head-left">
+            <span class="label-kicker">Back Issues</span>
+            <h2>Twelve Years, <em>In Print.</em></h2>
+          </div>
+          <div class="section-head-right">
+            <div class="mz-iss-nav">
+              <button class="mz-iss-btn" id="mzIssPrev" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
+              <button class="mz-iss-btn" id="mzIssNext" aria-label="Next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
+            </div>
+          </div>
+        </div>
+        <div class="mz-iss-track" id="mzIssTrack">
+          {issues.map((it) => (
+            <article class="mz-iss-card">
+              <div class="mz-iss-bar"><span class="mz-iss-yr">{it.yr}</span><span class="mz-iss-vol">{it.vol}</span></div>
+              <img class="mz-iss-img" src={it.img} alt="" onerror="this.style.opacity=0">
+              <div class="mz-iss-b">
+                <h3>{it.h}</h3>
+                <p>{it.p}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== FILM ===== -->
+    <section class="mz-film">
+      <img src="/images/lifestyle-7.jpg" alt="" loading="lazy" decoding="async" />
+      <div class="mz-film-c">
+        <span class="mz-lab">On Film · Inside the Edit</span>
+        <h2>EVERY PRODUCT <em>EARNS ITS PLACE.</em></h2>
+        <p>Go behind the bench — how we test, argue and decide what makes the shelf, and what never does.</p>
+      </div>
+    </section>
+
+    <!-- ===== FOUNDER QUOTE ===== -->
+    <section class="mz-fnd" id="abmFounder">
+      <div class="mz-fnd-in">
+        <span class="mz-lab">Founder's Quote</span>
+        <p class="mz-fnd-q">The best tech advice still sounds like a <em>good friend</em> talking.</p>
+        <div class="mz-fnd-body">
+          <p>When we started, the internet was already drowning in fake reviews and affiliate noise. We didn't want to
+            add to it — we wanted to be the antidote. A place where the recommendation is the product, and the trust
+            is the business.</p>
+          <p>Twelve years on, that's still the only metric I care about: did we earn your trust today?</p>
+        </div>
+        <div class="mz-fnd-sign">
+          <span class="sig">Adrian Mercer</span>
+          <span>Founder &amp; Editor-in-Chief, asmaz</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== MASTHEAD (team) ===== -->
+    <section class="mz-mast" id="abmTeam">
+      <div class="mz-wrap">
+        <div class="section-head">
+          <div class="section-head-left">
+            <span class="label-kicker">The Masthead</span>
+            <h2>The People Behind <em>The Print.</em></h2>
+          </div>
+          <div class="section-head-right">
+            <span class="meta" style="max-width: 300px; text-align: right;">A small team of obsessives — editors,
+              technicians and curators.</span>
+          </div>
+        </div>
+
+        <div class="mz-team-panels">
+          {team.map((m) => (
+            <article class:list={['mz-team-panel', m.open && 'is-open']}>
+              <img src={m.img} alt={m.name} onerror="this.style.opacity=0">
+              <a class="mz-team-link" href={`/team/${m.slug}`} aria-label={`View ${m.name}, ${m.role}`}></a>
+              <div class="mz-team-meta">
+                <span class="nm">{m.name}</span>
+                <span class="rl">{m.role}</span>
+              </div>
+              <div class="mz-team-social">
+                <a href={m.social.instagram ?? '#'} target="_blank" rel="noopener noreferrer" aria-label="Instagram"><Fragment set:html={ig} /></a>
+                <a href={m.social.x ?? '#'} target="_blank" rel="noopener noreferrer" aria-label="X"><Fragment set:html={x} /></a>
+                <a href={m.social.linkedin ?? '#'} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><Fragment set:html={li} /></a>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== FAQ ===== -->
+    <section class="mz-faq" id="abmFaq">
+      <div class="mz-wrap">
+        <div class="section-head">
+          <div class="section-head-left">
+            <span class="label-kicker">Good to know</span>
+            <h2>Frequently <em>Asked.</em></h2>
+          </div>
+          <div class="section-head-right">
+            <a href="/pages/contact" class="see-all-link">Ask a question
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="mz-faq-list">
+          {faqs.map((f) => (
+            <div class="mz-faq-item">
+              <button class="mz-faq-q" type="button" aria-expanded="false">
+                <span class="q">{f.q}</span>
+                <span class="ttl">{f.ttl}</span>
+                <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round" /></svg></span>
+              </button>
+              <div class="mz-faq-a">
+                <div class="mz-faq-a-inner">{f.a}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+  </div>
+</BaseLayout>
+
+<!-- About logic — back-issues scroller + FAQ accordion (ported verbatim) -->
+<script>
+  (function () {
+    var track = document.getElementById('mzIssTrack');
+    var prev = document.getElementById('mzIssPrev');
+    var next = document.getElementById('mzIssNext');
+    if (track && prev && next) {
+      var update = function () {
+        var max = track.scrollWidth - track.clientWidth - 1;
+        prev.disabled = track.scrollLeft <= 1;
+        next.disabled = track.scrollLeft >= max;
+      };
+      var step = function (dir) {
+        var card = track.querySelector('.mz-iss-card');
+        var amt = card ? card.offsetWidth + 18 : track.clientWidth * 0.8;
+        track.scrollBy({ left: dir * amt, behavior: 'smooth' });
+      };
+      prev.addEventListener('click', function () { step(-1); });
+      next.addEventListener('click', function () { step(1); });
+      track.addEventListener('scroll', update, { passive: true });
+      window.addEventListener('resize', update);
+      update();
+    }
+
+    var faq = document.getElementById('abmFaq');
+    if (faq) {
+      var items = faq.querySelectorAll('.mz-faq-item');
+      items.forEach(function (item) {
+        var btn = item.querySelector('.mz-faq-q');
+        var ans = item.querySelector('.mz-faq-a');
+        btn.addEventListener('click', function () {
+          var isOpen = item.classList.contains('open');
+          items.forEach(function (o) {
+            o.classList.remove('open');
+            o.querySelector('.mz-faq-q').setAttribute('aria-expanded', 'false');
+            o.querySelector('.mz-faq-a').style.maxHeight = null;
+          });
+          if (!isOpen) {
+            item.classList.add('open');
+            btn.setAttribute('aria-expanded', 'true');
+            ans.style.maxHeight = ans.scrollHeight + 'px';
+          }
+        });
+      });
+    }
+  })();
+</script>

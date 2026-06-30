@@ -1,0 +1,29 @@
+---
+// ============================================================
+//  PageHeader — page mast: optional breadcrumb, kicker eyebrow,
+//  big condensed title, optional description. Used by listing +
+//  content pages.
+// ============================================================
+import Breadcrumbs from './Breadcrumbs.astro';
+
+interface Crumb {
+  label: string;
+  href?: string;
+}
+interface Props {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  crumbs?: Crumb[];
+}
+const { eyebrow, title, description, crumbs } = Astro.props;
+---
+
+<section class="page-mast">
+  <div class="wrap page-mast__inner">
+    {crumbs && crumbs.length > 0 && <Breadcrumbs items={crumbs} />}
+    {eyebrow && <span class="eyebrow kicker">{eyebrow}</span>}
+    <h1 class="masthead page-mast__title">{title}</h1>
+    {description && <p class="page-mast__desc" set:html={description} />}
+  </div>
+</section>

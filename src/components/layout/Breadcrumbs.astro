@@ -1,0 +1,35 @@
+---
+// ============================================================
+//  Breadcrumbs — compact crumb trail for inner pages. Pass an
+//  ordered list of { label, href? }; the last item is current.
+// ============================================================
+import { cn } from '~/lib/utils';
+
+interface Crumb {
+  label: string;
+  href?: string;
+}
+interface Props {
+  items: Crumb[];
+  class?: string;
+}
+
+const { items, class: className } = Astro.props;
+---
+
+<nav aria-label="Breadcrumb" class={cn('crumbs', className)}>
+  <ol>
+    {
+      items.map((item, i) => (
+        <li>
+          {i > 0 && <span class="crumbs__sep">/</span>}
+          {item.href && i < items.length - 1 ? (
+            <a href={item.href} class="crumbs__link">{item.label}</a>
+          ) : (
+            <span class="crumbs__current">{item.label}</span>
+          )}
+        </li>
+      ))
+    }
+  </ol>
+</nav>

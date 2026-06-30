@@ -1,0 +1,24 @@
+/* ============================================================
+   asmaz — global stylesheet (plain CSS, no Tailwind).
+   Single entry imported once by BaseLayout. Loads the design
+   tokens, base/reset, then the semantic component layers.
+   ============================================================ */
+@import "./tokens.css";
+@import "./base.css";
+@import "./ui.css";
+@import "./layout.css";
+@import "./islands.css";
+@import "./shop.css";
+@import "./product.css";
+@import "./cart.css";
+@import "./home.css";
+@import "./shop-magazine.css";
+@import "./product-magazine.css";
+@import "./about-magazine.css";
+@import "./contact-magazine.css";
+@import "./refine.css";
+@import "./content.css";
+@import "./polish.css";
+@import "./account.css";
+@import "./pages.css";
+@import "./misc-pages.css";

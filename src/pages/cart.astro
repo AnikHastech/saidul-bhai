@@ -1,0 +1,32 @@
+---
+// ============================================================
+//  Cart page — full-page cart. Reads the cookie cart server-side
+//  for an instant SSR snapshot, then the CartPage island takes
+//  over for live qty / remove / checkout.
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import CartPage from '~/components/react/CartPage.tsx';
+import Breadcrumbs from '~/components/layout/Breadcrumbs.astro';
+import { readCart } from '~/lib/cart-server';
+import type { Cart } from '~/lib/shopify/types';
+
+export const prerender = false;
+
+let initialCart: Cart | null = null;
+try {
+  const res = await readCart(Astro.cookies);
+  initialCart = res.cart;
+} catch (err) {
+  console.error('[cart] read failed:', (err as Error).message);
+}
+---
+
+<BaseLayout title="Your cart" description="Review your cart and check out securely." noindex>
+  <div class="wrap cart-page">
+    <div class="cart-page__head">
+      <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Cart' }]} />
+      <h1 class="masthead cart-page__title" style="margin-top:12px;">Your Cart</h1>
+    </div>
+    <CartPage client:load initialCart={initialCart} />
+  </div>
+</BaseLayout>

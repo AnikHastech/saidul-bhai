@@ -1,0 +1,200 @@
+---
+// ============================================================
+//  Header — sticky white masthead (logo · search · account /
+//  wishlist / cart) over a black department nav bar. Interactive
+//  bits are islands; the nav links are static from config.
+// ============================================================
+import { SITE, FALLBACK_NAV, DEPARTMENTS, PAGES_MENU } from '~/config/site';
+import { formatMoney } from '~/lib/utils';
+import type { ProductCard } from '~/lib/shopify/types';
+import Logo from '~/components/ui/Logo.astro';
+import Icon from '~/components/ui/Icon.astro';
+import SearchBar from '~/components/react/SearchBar.tsx';
+import HeaderActions from '~/components/react/HeaderActions.tsx';
+import MenuButton from '~/components/react/MenuButton.tsx';
+
+interface Props {
+  // Search category dropdown, derived from the store's collections.
+  searchCategories?: readonly { title: string; handle?: string }[];
+  // Collection products keyed by handle, for the nav megamenus/dropdowns.
+  navProducts?: Record<string, ProductCard[]>;
+}
+const { searchCategories, navProducts = {} } = Astro.props;
+const searchCats =
+  searchCategories && searchCategories.length
+    ? searchCategories
+    : SITE.searchCategories.map((t) => ({ title: t }));
+---
+
+<header id="siteHeader" class="site-header">
+  <div class="wrap">
+    {/* Desktop top row */}
+    <div class="header-grid">
+      <Logo />
+      <SearchBar client:idle categories={searchCats} />
+      <HeaderActions client:idle />
+    </div>
+
+    {/* Mobile top row */}
+    <div class="header-mobile">
+      <div class="header-mobile__row">
+        <MenuButton client:idle variant="hamburger" />
+        <Logo showSub={false} />
+        <HeaderActions client:idle />
+      </div>
+      <SearchBar client:idle categories={searchCats} />
+    </div>
+  </div>
+
+  {/* Department nav bar */}
+  <nav class="dept-nav" aria-label="Primary">
+    <div class="wrap dept-nav__inner">
+      {/* Shop-by-department: click toggles a dropdown of all departments. */}
+      <div class="dept-trigger" data-dept-dropdown>
+        <button type="button" class="allcats" id="deptToggle" aria-haspopup="true" aria-expanded="false">
+          <Icon name="menu" size={16} />
+          Shop by Department
+        </button>
+        <div class="dept-flyout" role="menu" aria-label="Departments">
+          <ul class="dept-flyout__list">
+            {
+              DEPARTMENTS.map((d) => (
+                <li>
+                  <a href={d.url} class="dept-flyout__link" role="menuitem">
+                    <span class="dept-flyout__icon"><Icon name={d.icon} size={17} /></span>
+                    {d.title}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+          <a href="/products" class="dept-flyout__all">
+            View all departments
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          </a>
+        </div>
+      </div>
+
+      <ul class="nav-list">
+        {
+          FALLBACK_NAV.map((n) => {
+            const products = n.collection ? (navProducts[n.collection] ?? []) : [];
+            const isMega = n.menu === 'mega' && products.length > 0;
+            const isDropdown = n.menu === 'dropdown' && products.length > 0;
+            const isPages = n.menu === 'pages';
+            const hasPanel = isMega || isDropdown || isPages;
+            return (
+              <li class:list={['nav-item', isMega && 'has-mega', (isDropdown || isPages) && 'has-dropdown']}>
+                <a href={n.url} class:list={['nav-list__link', n.hot && 'is-hot']}>
+                  {n.hot && <span class="nav-ping" />}
+                  {n.title}
+                  {n.tag === 'new' && <span class="nav-list__new">NEW</span>}
+                  {hasPanel && (
+                    <svg class="nav-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6" /></svg>
+                  )}
+                </a>
+
+                {/* Pages: static link list */}
+                {isPages && (
+                  <div class="nav-dropdown" role="menu" aria-label={n.title}>
+                    {PAGES_MENU.map((l) => (
+                      <a href={l.url} class="nav-dropdown__link" role="menuitem">{l.label}</a>
+                    ))}
+                  </div>
+                )}
+
+                {/* Collection dropdown: short product list */}
+                {isDropdown && (
+                  <div class="nav-dropdown nav-dropdown--products" role="menu" aria-label={n.title}>
+                    {products.slice(0, 5).map((p) => (
+                      <a href={`/products/${p.handle}`} class="nav-prod" role="menuitem">
+                        <span class="nav-prod__thumb">
+                          {p.featuredImage && <img src={p.featuredImage.url} alt={p.featuredImage.altText ?? p.title} loading="lazy" />}
+                        </span>
+                        <span class="nav-prod__main">
+                          <span class="nav-prod__title">{p.title}</span>
+                          <span class="nav-prod__price">{formatMoney(p.priceRange.minVariantPrice.amount, p.priceRange.minVariantPrice.currencyCode)}</span>
+                        </span>
+                      </a>
+                    ))}
+                    <a href={n.url} class="nav-dropdown__all">
+                      View all {n.title}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                    </a>
+                  </div>
+                )}
+
+                {/* Collection megamenu: product grid */}
+                {isMega && (
+                  <div class="mega-panel">
+                    <div class="wrap mega-panel__inner">
+                      <div class="mega-head">
+                        <h4 class="mega-head__title">{n.title}</h4>
+                        <a href={n.url} class="mega-head__all">
+                          View all
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                        </a>
+                      </div>
+                      <div class="mega-products">
+                        {products.slice(0, 5).map((p) => {
+                          const m = p.priceRange.minVariantPrice;
+                          return (
+                            <a href={`/products/${p.handle}`} class="mega-prod">
+                              <span class="mega-prod__media">
+                                {p.featuredImage && <img src={p.featuredImage.url} alt={p.featuredImage.altText ?? p.title} loading="lazy" />}
+                              </span>
+                              <span class="mega-prod__title">{p.title}</span>
+                              <span class="mega-prod__price">{formatMoney(m.amount, m.currencyCode)}</span>
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </li>
+            );
+          })
+        }
+      </ul>
+
+      <div class="dept-nav__right">
+        <a href="/compare" class="dept-nav__compare">
+          <Icon name="compare" size={14} />
+          Compare
+        </a>
+      </div>
+    </div>
+  </nav>
+</header>
+
+<script>
+  // Add a subtle shadow once the page is scrolled.
+  const header = document.getElementById('siteHeader');
+  if (header) {
+    const onScroll = () => header.classList.toggle('is-scrolled', window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+  }
+
+  // "Shop by Department" click dropdown: toggle open, close on outside
+  // click or Escape, and keep aria-expanded in sync.
+  const deptTrigger = document.querySelector<HTMLElement>('[data-dept-dropdown]');
+  const deptToggle = document.getElementById('deptToggle');
+  if (deptTrigger && deptToggle) {
+    const setOpen = (open: boolean) => {
+      deptTrigger.classList.toggle('is-open', open);
+      deptToggle.setAttribute('aria-expanded', String(open));
+    };
+    deptToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setOpen(!deptTrigger.classList.contains('is-open'));
+    });
+    document.addEventListener('click', (e) => {
+      if (!deptTrigger.contains(e.target as Node)) setOpen(false);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    });
+  }
+</script>

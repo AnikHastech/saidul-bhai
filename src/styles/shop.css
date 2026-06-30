@@ -1,0 +1,222 @@
+/* ============================================================
+   asmaz — SHOP / LISTING: page mast, listing toolbar, product
+   grid + card, collection card, pagination, empty state.
+   ============================================================ */
+
+/* ---------- Page mast ---------- */
+.page-mast { border-bottom: 1px solid var(--line); background: var(--mist); }
+.page-mast__inner { padding-block: 48px; }
+.page-mast__title { margin-top: 12px; font-size: clamp(2.25rem, 6vw, 3.75rem); color: var(--news); }
+.page-mast__desc { margin-top: 12px; max-width: 40rem; color: var(--graphite); }
+.page-mast .crumbs { margin-bottom: 16px; }
+@media (min-width: 768px) { .page-mast__inner { padding-block: 64px; } }
+
+/* ---------- Listing toolbar ---------- */
+.listing__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.listing__count { font-size: 0.8125rem; font-weight: 600; color: var(--graphite); font-variant-numeric: tabular-nums; }
+.listing__body { padding-top: 40px; }
+
+/* ---------- Sort control ---------- */
+.sort { position: relative; display: inline-flex; align-items: center; }
+.sort__shell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--paper);
+  transition: border-color var(--t-fast);
+}
+.sort__shell:hover { border-color: var(--news); }
+.sort__label { color: var(--muted); }
+.sort__select {
+  height: 40px;
+  padding-right: 20px;
+  border: 0;
+  background: transparent;
+  font-size: 0.875rem;
+  color: var(--ink);
+  cursor: pointer;
+  appearance: none;
+  outline: none;
+}
+.sort:focus-visible { outline: 2px solid var(--electric); outline-offset: 2px; border-radius: var(--r-sm); }
+.sort__chev { position: absolute; right: 10px; pointer-events: none; color: var(--graphite); }
+
+/* ---------- Product grid ---------- */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px 16px;
+}
+@media (min-width: 768px) {
+  .product-grid { grid-template-columns: repeat(3, 1fr); gap: 40px 24px; }
+}
+@media (min-width: 1024px) {
+  .product-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ---------- Product card ---------- */
+.product-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--paper);
+  transition: transform var(--t-med), box-shadow var(--t-med), border-color var(--t-med);
+}
+.product-card:hover { transform: translateY(-4px); box-shadow: var(--sh-lg); border-color: var(--news); }
+.product-card__media { position: relative; display: block; aspect-ratio: 1 / 1; overflow: hidden; background: var(--cool); }
+.product-card__media img { width: 100%; height: 100%; object-fit: cover; transition: transform 700ms var(--e-out); }
+.product-card:hover .product-card__media img { transform: scale(1.05); }
+.product-card__noimg { display: grid; height: 100%; place-items: center; color: var(--muted-2); font-size: 0.8rem; }
+
+.product-card__flags { position: absolute; top: 12px; left: 12px; z-index: 2; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+
+.product-card__wish {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--news);
+  backdrop-filter: blur(4px);
+  box-shadow: var(--sh-sm);
+  transition: color var(--t-fast), background var(--t-fast);
+}
+.product-card__wish:hover { color: var(--signal); }
+.product-card__wish.is-active { color: var(--signal); }
+.product-card__wish.is-active svg { fill: var(--signal); }
+
+.product-card__quick {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  background: var(--news);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transform: translateY(100%);
+  transition: transform var(--t-med) var(--e-out), background var(--t-fast);
+}
+.product-card:hover .product-card__quick { transform: translateY(0); }
+.product-card__quick:hover { background: var(--signal); }
+
+.product-card__body { display: flex; flex-direction: column; gap: 8px; padding: 16px; }
+.product-card__brand { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.product-card__name {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--news);
+  min-height: 42px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  transition: color var(--t-fast);
+}
+.product-card:hover .product-card__name { color: var(--signal-strong); }
+.product-card__prices { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+
+/* ---------- Collection card ---------- */
+.collection-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 640px) { .collection-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1024px) { .collection-grid { grid-template-columns: repeat(3, 1fr); gap: 24px; } }
+
+.collection-card {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+}
+.collection-card img { width: 100%; height: 100%; object-fit: cover; transition: transform 700ms var(--e-out); }
+.collection-card:hover img { transform: scale(1.05); }
+.collection-card__fallback { display: grid; height: 100%; place-items: center; background: var(--news); color: rgba(255, 255, 255, 0.4); }
+.collection-card__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 20px;
+  background: linear-gradient(to top, rgba(5, 5, 5, 0.7), rgba(5, 5, 5, 0.05) 55%, transparent);
+}
+.collection-card__eyebrow { color: rgba(255, 255, 255, 0.7); }
+.collection-card__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 4px; }
+.collection-card__title { font-size: 1.5rem; text-transform: uppercase; color: #fff; }
+.collection-card__go {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #fff;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity var(--t-fast), transform var(--t-fast);
+}
+.collection-card:hover .collection-card__go { opacity: 1; transform: none; }
+
+/* ---------- Pagination ---------- */
+.pagination { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 56px; }
+.pagination__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink);
+  transition: border-color var(--t-fast), color var(--t-fast);
+}
+.pagination__btn:hover { border-color: var(--news); }
+.pagination__btn.is-disabled { color: var(--muted-2); cursor: not-allowed; opacity: 0.6; }
+
+/* ---------- Empty state ---------- */
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding-block: 96px; text-align: center; }
+.empty-state__icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  color: var(--muted-2);
+}
+.empty-state h2 { font-size: 1.5rem; text-transform: uppercase; color: var(--news); }
+.empty-state p { margin-top: 8px; max-width: 24rem; font-size: 0.875rem; color: var(--graphite); }
+.empty-state .btn { margin-top: 24px; }
