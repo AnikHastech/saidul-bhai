@@ -15,16 +15,21 @@
     "react",
     "ssr"
   ],
-  "homepage": "https://github.com/hasthemes/asmaz#readme",
+  "author": {
+    "name": "Aslam Hasib",
+    "email": "hello@hasthemes.com",
+    "url": "https://hasthemes.com"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "homepage": "/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hasthemes/asmaz.git"
+    "url": "#"
   },
   "bugs": {
-    "url": "https://github.com/hasthemes/asmaz/issues"
+    "url": "#",
+    "email": "support@hasthemes.com"
   },
-  "author": "HasThemes",
-  "license": "MIT",
   "engines": {
     "node": ">=22.12.0"
   },
@@ -32,8 +37,10 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "start": "node --env-file-if-exists=.env ./dist/server/entry.mjs",
-    "astro": "astro"
+    "astro": "astro",
+    "release:patch": "npm version patch -m \"chore: release %s\" && git push && git push --tags",
+    "release:minor": "npm version minor -m \"chore: release %s\" && git push && git push --tags",
+    "release:major": "npm version major -m \"chore: release %s\" && git push && git push --tags"
   },
   "dependencies": {
     "@astrojs/node": "^10",
