@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "asmaz-storefront",
+  "name": "saidul-bhai",
 
   // SSR entry provided by @astrojs/cloudflare (v13 builds via @cloudflare/vite-plugin).
   // Point at the package entrypoint — the plugin bundles the real worker from
