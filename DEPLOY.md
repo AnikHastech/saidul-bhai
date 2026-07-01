@@ -120,6 +120,32 @@ Cloudflare automatically.
 
 ---
 
+## Alternative: Cloudflare Git-connected builds (Workers Builds / CI)
+
+If you connect the repo to Cloudflare instead of deploying from your machine,
+Cloudflare clones and runs the build in its own CI. A few things differ:
+
+- **Lockfile:** Cloudflare picks the package manager from the committed lockfile.
+  This repo commits **both** `package-lock.json` and `yarn.lock`; Cloudflare
+  detects npm and runs **`npm ci`**, which fails if `package-lock.json` is out of
+  sync with `package.json`. After any dependency change, keep it in sync:
+  ```bash
+  npm install --package-lock-only   # then commit package-lock.json
+  ```
+  (Committing only `yarn.lock` is **not** enough — that was the cause of the
+  `npm ci … Missing: @astrojs/cloudflare from lock file` build failure.)
+- **Build command:** `npm run build` (i.e. `astro build`).
+- **Deploy command:** `npx wrangler deploy` (auto-uses the generated
+  `dist/server/wrangler.json` via `.wrangler/deploy/config.json`).
+- **Secrets + vars:** set them in the Cloudflare dashboard (Workers project →
+  Settings → Variables and Secrets) instead of `wrangler secret put`. Add
+  `SHOPIFY_SHOP_DOMAIN`, `SHOPIFY_STOREFRONT_PRIVATE_TOKEN`,
+  `CUSTOMER_ACCOUNT_API_CLIENT_ID`, `SHOPIFY_SHOP_ID` as **secrets**.
+- **`SITE_URL`:** add it as a **build-time** environment variable in the dashboard
+  (it's baked into canonical URLs during `astro build`).
+- **`SESSION` KV:** create the namespace and add its `id` to `wrangler.jsonc`
+  (committed), or bind it in the dashboard.
+
 ## Local development on the Workers runtime
 
 `astro dev` / `astro preview` run on workerd and read **`.dev.vars`** (Cloudflare's
