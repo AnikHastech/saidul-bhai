@@ -37,13 +37,15 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "deploy": "astro build && wrangler deploy",
+    "cf-typegen": "wrangler types",
     "astro": "astro",
     "release:patch": "npm version patch -m \"chore: release %s\" && git push && git push --tags",
     "release:minor": "npm version minor -m \"chore: release %s\" && git push && git push --tags",
     "release:major": "npm version major -m \"chore: release %s\" && git push && git push --tags"
   },
   "dependencies": {
-    "@astrojs/node": "^10",
+    "@astrojs/cloudflare": "^13.7.0",
     "@astrojs/react": "^4",
     "@nanostores/react": "^0.8",
     "astro": "^6.4.7",
@@ -55,6 +57,7 @@
   },
   "devDependencies": {
     "@types/react": "^19",
-    "@types/react-dom": "^19"
+    "@types/react-dom": "^19",
+    "wrangler": "^4.83.0"
   }
 }

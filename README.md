@@ -159,11 +159,11 @@ cp .env.example .env     # add Shopify credentials — or use mock.shop (see bel
 yarn dev                 # dev server → http://localhost:4321
 ```
 
-### Build &amp; run (standalone Node server)
+### Build &amp; preview (Cloudflare workerd)
 ```bash
-yarn build               # → dist/server/entry.mjs
-yarn start               # node --env-file-if-exists=.env ./dist/server/entry.mjs
-# or provide env yourself: HOST=0.0.0.0 PORT=4321 node ./dist/server/entry.mjs
+yarn build               # → dist/server (worker) + dist/client (assets)
+yarn preview             # preview on the real Workers runtime → http://localhost:4321
+yarn deploy              # astro build && wrangler deploy  (see DEPLOY.md)
 ```
 
 > **Zero-credential demo:** set `SHOPIFY_STOREFRONT_ENDPOINT=https://mock.shop/api` in
@@ -261,7 +261,7 @@ astro.config.mjs  ·  package.json  ·  tsconfig.json  ·  .env.example
 | Dependency | Version | Purpose |
 | --- | --- | --- |
 | Astro | ^6.4.7 | SSR framework (`output: "server"`) |
-| @astrojs/node | ^10 | Standalone Node adapter |
+| @astrojs/cloudflare | ^13.7 | Cloudflare Workers adapter (workerd) |
 | @astrojs/react | ^4 | React islands integration |
 | react · react-dom | ^19 | Interactive islands |
 | nanostores · @nanostores/react | ^0.11 · ^0.8 | Framework-agnostic state (cart, wishlist, compare) |
@@ -271,7 +271,7 @@ astro.config.mjs  ·  package.json  ·  tsconfig.json  ·  .env.example
 | Shopify Storefront API | `2026-04` | Catalogue, cart, search, content |
 | Shopify Customer Account API | `2025-01` | Login (OAuth 2.0 + PKCE) |
 
-> **Version compatibility (don’t break):** `astro@6` ⇄ `@astrojs/node@^10` ⇄ `@astrojs/react@^4`,
+> **Version compatibility (don’t break):** `astro@6` ⇄ `@astrojs/cloudflare@^13.7` ⇄ `@astrojs/react@^4`,
 > `react@19` + `react-dom@19`. The Vite `optimizeDeps`/`dedupe` config in `astro.config.mjs`
 > forces a single ESM copy of React for the islands — keep it.
 
@@ -281,10 +281,11 @@ astro.config.mjs  ·  package.json  ·  tsconfig.json  ·  .env.example
 
 | Command | Description |
 | --- | --- |
-| `yarn dev` | Start the dev server (HMR) at `:4321` |
-| `yarn build` | Build the production site → `dist/server/entry.mjs` |
-| `yarn preview` | Preview the built server |
-| `yarn start` | Run the built standalone Node server (loads `.env`) |
+| `yarn dev` | Start the dev server (workerd, HMR) at `:4321` |
+| `yarn build` | Build the Worker → `dist/server` + assets → `dist/client` |
+| `yarn preview` | Preview the built Worker on the Cloudflare runtime |
+| `yarn deploy` | `astro build && wrangler deploy` (see `DEPLOY.md`) |
+| `yarn cf-typegen` | Regenerate binding types from `wrangler.jsonc` |
 | `yarn astro` | Run Astro CLI commands |
 
 > No test runner, linter or formatter is configured — only the scripts above.
@@ -293,11 +294,22 @@ astro.config.mjs  ·  package.json  ·  tsconfig.json  ·  .env.example
 
 ## Deployment
 
-`yarn build` produces a standalone Node server at `dist/server/entry.mjs`. Run it on any
-Node ≥ 22.12 host (Fly, Railway, Render, a VPS, etc.) with `HOST`/`PORT`, `SITE_URL` and the
-Shopify env vars. Put it behind an HTTPS origin/CDN; cache the content-hashed `/_astro/*`
-assets long-term (HTML is currency-personalized per cookie, so don’t shared-cache it). For
-customer login, that origin must be public HTTPS and match the URLs registered in the
+Deploys as a single SSR **Cloudflare Worker** via `@astrojs/cloudflare` (workerd) — see
+**[DEPLOY.md](./DEPLOY.md)** for the full walkthrough. Short version:
+
+```bash
+yarn wrangler login
+yarn wrangler secret put SHOPIFY_SHOP_DOMAIN            # + STOREFRONT_PRIVATE_TOKEN, and
+                                                       #   CLIENT_ID + SHOP_ID for login
+yarn wrangler kv namespace create SESSION              # paste id into wrangler.jsonc
+SITE_URL=https://<worker-url> yarn deploy
+```
+
+`SITE_URL` is baked in at **build** time (canonical URLs / sitemap / robots). Shopify
+secrets are read from `process.env`, auto-populated by Cloudflare (`nodejs_compat` +
+`compatibility_date ≥ 2025-04-01`). Content-hashed `/_astro/*` assets are served by the
+Worker's asset binding with immutable caching; HTML is currency-personalized per cookie, so
+it isn't shared-cached. Customer login needs the public Worker origin registered in the
 Customer Account API app.
 
 ---

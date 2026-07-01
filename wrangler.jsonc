@@ -1,0 +1,35 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "asmaz-storefront",
+
+  // SSR entry provided by @astrojs/cloudflare (v13 builds via @cloudflare/vite-plugin).
+  // Point at the package entrypoint — the plugin bundles the real worker from
+  // Astro's build output. The ASSETS binding + static directory are injected by
+  // the adapter automatically, so no "assets" block is needed here.
+  "main": "@astrojs/cloudflare/entrypoints/server",
+
+  // Bump to the day you deploy. >= 2025-04-01 is required so the runtime
+  // auto-populates `process.env` from vars + secrets (the env() helper in
+  // src/lib/shopify reads process.env on the worker).
+  "compatibility_date": "2025-05-21",
+  // nodejs_compat: node:crypto (PKCE) + node:async_hooks (per-request market
+  //   context) + the process.env population above.
+  // global_fetch_strictly_public: outbound fetch() (Shopify APIs) always goes
+  //   to the public internet rather than looping back into this worker.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+
+  "observability": { "enabled": true }
+
+  // ── Sessions (KV) ────────────────────────────────────────────────────────
+  // The adapter enables Astro sessions on a "SESSION" KV binding. Local dev
+  // works without provisioning. To DEPLOY, create the namespace once and add
+  // its id here (see DEPLOY.md):
+  //   wrangler kv namespace create SESSION
+  //   "kv_namespaces": [{ "binding": "SESSION", "id": "<paste-id>" }]
+  //
+  // ── Secrets ──────────────────────────────────────────────────────────────
+  // NOT stored here (this file is committed). Set once per environment with
+  // `wrangler secret put <NAME>` — SHOPIFY_SHOP_DOMAIN,
+  // SHOPIFY_STOREFRONT_PRIVATE_TOKEN, CUSTOMER_ACCOUNT_API_CLIENT_ID,
+  // SHOPIFY_SHOP_ID. See DEPLOY.md.
+}
