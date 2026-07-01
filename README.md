@@ -146,24 +146,24 @@ like a tech publication that happens to sell, not a generic grid store.
 
 ### Prerequisites
 - **Node.js ≥ 22.12**
-- **yarn** (a `yarn.lock` is committed). No yarn? Enable Corepack (ships with Node): `corepack enable`.
+- **npm** (a `package-lock.json` is committed; ships with Node).
 
 ### Install
 ```bash
-yarn install
+npm install
 cp .env.example .env     # add Shopify credentials — or use mock.shop (see below)
 ```
 
 ### Develop
 ```bash
-yarn dev                 # dev server → http://localhost:4321
+npm run dev                 # dev server → http://localhost:4321
 ```
 
 ### Build &amp; preview (Cloudflare workerd)
 ```bash
-yarn build               # → dist/server (worker) + dist/client (assets)
-yarn preview             # preview on the real Workers runtime → http://localhost:4321
-yarn deploy              # astro build && wrangler deploy  (see DEPLOY.md)
+npm run build               # → dist/server (worker) + dist/client (assets)
+npm run preview             # preview on the real Workers runtime → http://localhost:4321
+npm run deploy              # astro build && wrangler deploy  (see DEPLOY.md)
 ```
 
 > **Zero-credential demo:** set `SHOPIFY_STOREFRONT_ENDPOINT=https://mock.shop/api` in
@@ -281,12 +281,12 @@ astro.config.mjs  ·  package.json  ·  tsconfig.json  ·  .env.example
 
 | Command | Description |
 | --- | --- |
-| `yarn dev` | Start the dev server (workerd, HMR) at `:4321` |
-| `yarn build` | Build the Worker → `dist/server` + assets → `dist/client` |
-| `yarn preview` | Preview the built Worker on the Cloudflare runtime |
-| `yarn deploy` | `astro build && wrangler deploy` (see `DEPLOY.md`) |
-| `yarn cf-typegen` | Regenerate binding types from `wrangler.jsonc` |
-| `yarn astro` | Run Astro CLI commands |
+| `npm run dev` | Start the dev server (workerd, HMR) at `:4321` |
+| `npm run build` | Build the Worker → `dist/server` + assets → `dist/client` |
+| `npm run preview` | Preview the built Worker on the Cloudflare runtime |
+| `npm run deploy` | `astro build && wrangler deploy` (see `DEPLOY.md`) |
+| `npm run cf-typegen` | Regenerate binding types from `wrangler.jsonc` |
+| `npm run astro` | Run Astro CLI commands |
 
 > No test runner, linter or formatter is configured — only the scripts above.
 
@@ -298,11 +298,11 @@ Deploys as a single SSR **Cloudflare Worker** via `@astrojs/cloudflare` (workerd
 **[DEPLOY.md](./DEPLOY.md)** for the full walkthrough. Short version:
 
 ```bash
-yarn wrangler login
-yarn wrangler secret put SHOPIFY_SHOP_DOMAIN            # + STOREFRONT_PRIVATE_TOKEN, and
+npx wrangler login
+npx wrangler secret put SHOPIFY_SHOP_DOMAIN            # + STOREFRONT_PRIVATE_TOKEN, and
                                                        #   CLIENT_ID + SHOP_ID for login
-yarn wrangler kv namespace create SESSION              # paste id into wrangler.jsonc
-SITE_URL=https://<worker-url> yarn deploy
+npx wrangler kv namespace create SESSION              # paste id into wrangler.jsonc
+SITE_URL=https://<worker-url> npm run deploy
 ```
 
 `SITE_URL` is baked in at **build** time (canonical URLs / sitemap / robots). Shopify
